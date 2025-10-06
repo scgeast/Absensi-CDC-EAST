@@ -3062,50 +3062,6 @@
             }
         }
 
-        // PERBAIKAN: Fungsi untuk update record terkait di Overtime Form
-        async function updateRelatedOvertimeFormRecords(overtimeItem) {
-            try {
-                const formattedDate = formatDateForOvertimeFormSearch(overtimeItem.date);
-                
-                // Cari record di Overtime Form yang terkait
-                const overtimeFormQuery = await db.collection('overtimeRecords')
-                    .where('employeeName', '==', overtimeItem.name)
-                    .where('date', '==', formattedDate)
-                    .get();
-                
-                if (!overtimeFormQuery.empty) {
-                    const batch = db.batch();
-                    
-                    overtimeFormQuery.forEach(doc => {
-                        const updateData = {};
-                        
-                        // Update overtimeDuration jika ada perubahan di RKP PIC
-                        if (overtimeItem.rkpPIC) {
-                            updateData.overtimeDuration = overtimeItem.rkpPIC;
-                        }
-                        
-                        // Update taskDescription jika ada perubahan di Remarks
-                        if (overtimeItem.remarks) {
-                            updateData.taskDescription = overtimeItem.remarks;
-                        }
-                        
-                        if (Object.keys(updateData).length > 0) {
-                            batch.update(doc.ref, {
-                                ...updateData,
-                                lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
-                            });
-                        }
-                    });
-                    
-                    await batch.commit();
-                    console.log('Updated related overtime form records');
-                }
-                
-            } catch (error) {
-                console.error('Error updating related overtime form records:', error);
-            }
-        }
-
         // =============================================
         // PERBAIKAN UNTUK USER MANAGEMENT - EDIT PASSWORD
         // =============================================
@@ -3836,6 +3792,13 @@
                 });
             });
             
+            // PERBAIKAN: Add event listeners untuk perhitungan otomatis berdasarkan Cek RMC
+            document.querySelectorAll('.cek-rmc').forEach(input => {
+                input.addEventListener('change', function() {
+                    calculateRmcShiftCheckOut(this);
+                });
+            });
+            
             // PERBAIKAN: Update icon sorting
             updateSortIcons();
             
@@ -3930,6 +3893,39 @@
             
             // PERBAIKAN: Hitung Rmc - Shift Check Out
             const cekRMC = row.querySelector('.cek-rmc').value;
+            if (cekRMC && shiftCheckOut) {
+                const rmcTime = new Date(`2000-01-01T${cekRMC}`);
+                const shiftOutTime = new Date(`2000-01-01T${shiftCheckOut}`);
+                
+                // Jika RMC di hari berikutnya (setelah tengah malam)
+                if (rmcTime < shiftOutTime) {
+                    rmcTime.setDate(rmcTime.getDate() + 1);
+                }
+                
+                const diffMs = rmcTime - shiftOutTime;
+                const diffHrs = Math.floor(diffMs / (1000 * 60 * 60));
+                const diffMins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+                
+                const rmcDiff = `${String(diffHrs).padStart(2, '0')}:${String(diffMins).padStart(2, '0')}`;
+                row.querySelector('.rmc-shift-check-out').value = rmcDiff;
+                
+                // Update data
+                const dataId = input.getAttribute('data-id');
+                if (dataId) {
+                    const item = overtimeCalcData.find(d => d.id === dataId);
+                    if (item) {
+                        item.rmcShiftCheckOut = rmcDiff;
+                    }
+                }
+            }
+        }
+
+        // PERBAIKAN: Fungsi khusus untuk menghitung Rmc-Shift Check Out
+        function calculateRmcShiftCheckOut(input) {
+            const row = input.closest('tr');
+            const shiftCheckOut = row.querySelector('td:nth-child(8)').textContent;
+            const cekRMC = input.value;
+            
             if (cekRMC && shiftCheckOut) {
                 const rmcTime = new Date(`2000-01-01T${cekRMC}`);
                 const shiftOutTime = new Date(`2000-01-01T${shiftCheckOut}`);
