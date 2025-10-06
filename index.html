@@ -2412,6 +2412,157 @@
         let leaveYearlyData = {};
 
         // =============================================
+        // PERBAIKAN: FUNGSI REALTIME LISTENERS
+        // =============================================
+
+        // PERBAIKAN: Fungsi untuk setup realtime listeners
+        function setupRealtimeListeners() {
+            console.log('Setting up realtime listeners...');
+            
+            // Realtime listener untuk overtime calculation
+            if (window.overtimeListener) {
+                window.overtimeListener(); // Hapus listener lama
+            }
+            
+            window.overtimeListener = db.collection('overtime')
+                .onSnapshot((snapshot) => {
+                    console.log('Overtime calculation data updated:', snapshot.size, 'documents');
+                    
+                    overtimeCalcData = [];
+                    snapshot.forEach(doc => {
+                        overtimeCalcData.push({
+                            id: doc.id,
+                            ...doc.data()
+                        });
+                    });
+                    
+                    console.log('Data overtime calculation dimuat:', overtimeCalcData.length, 'records');
+                    
+                    // Update tampilan jika tab aktif
+                    if (currentTab === "overtime") {
+                        updateOvertimeTable();
+                    }
+                    if (currentTab === "summary-overtime") {
+                        updateOvertimeSummaryTable();
+                    }
+                    
+                }, (error) => {
+                    console.error('Error in overtime realtime listener:', error);
+                });
+
+            // Realtime listener untuk overtime form data
+            if (window.overtimeFormListener) {
+                window.overtimeFormListener(); // Hapus listener lama
+            }
+            
+            let query = db.collection('overtimeRecords');
+            if (currentUser.role !== 'admin') {
+                query = query.where('employeeEmail', '==', currentUser.email);
+            }
+            
+            window.overtimeFormListener = query
+                .orderBy('date', 'desc')
+                .onSnapshot((snapshot) => {
+                    console.log('Overtime form data updated:', snapshot.size, 'documents');
+                    
+                    rekapLemburData = [];
+                    snapshot.forEach(doc => {
+                        rekapLemburData.push({
+                            id: doc.id,
+                            ...doc.data()
+                        });
+                    });
+                    
+                    // Update tampilan jika tab aktif
+                    if (currentTab === "form-rekap-lembur") {
+                        updateOvertimeDetailTable();
+                        updateTotalOvertime();
+                    }
+                    
+                }, (error) => {
+                    console.error('Error in overtime form realtime listener:', error);
+                });
+
+            // Realtime listener untuk users
+            if (window.usersListener) {
+                window.usersListener(); // Hapus listener lama
+            }
+            
+            window.usersListener = db.collection('users')
+                .onSnapshot((snapshot) => {
+                    console.log('Users data updated:', snapshot.size, 'documents');
+                    
+                    users = [];
+                    snapshot.forEach(doc => {
+                        users.push({
+                            id: doc.id,
+                            ...doc.data()
+                        });
+                    });
+                    
+                    // Update tampilan jika tab aktif
+                    if (currentTab === "setting") {
+                        updateUserManagementTable();
+                    }
+                    
+                }, (error) => {
+                    console.error('Error in users realtime listener:', error);
+                });
+
+            // Realtime listener untuk cuti
+            if (window.cutiListener) {
+                window.cutiListener(); // Hapus listener lama
+            }
+            
+            window.cutiListener = db.collection('cuti')
+                .onSnapshot((snapshot) => {
+                    console.log('Cuti data updated:', snapshot.size, 'documents');
+                    
+                    cutiData = [];
+                    snapshot.forEach(doc => {
+                        cutiData.push({
+                            id: doc.id,
+                            ...doc.data()
+                        });
+                    });
+                    
+                    // Update tampilan jika tab aktif
+                    if (currentTab === "cuti") {
+                        updateCutiTable();
+                    }
+                    if (currentTab === "cuti-detail") {
+                        generateCutiDetailData();
+                    }
+                    
+                }, (error) => {
+                    console.error('Error in cuti realtime listener:', error);
+                });
+
+            console.log('All realtime listeners setup completed');
+        }
+
+        // PERBAIKAN: Fungsi untuk membersihkan semua realtime listeners
+        function cleanupRealtimeListeners() {
+            if (window.overtimeListener) {
+                window.overtimeListener();
+                window.overtimeListener = null;
+            }
+            if (window.overtimeFormListener) {
+                window.overtimeFormListener();
+                window.overtimeFormListener = null;
+            }
+            if (window.usersListener) {
+                window.usersListener();
+                window.usersListener = null;
+            }
+            if (window.cutiListener) {
+                window.cutiListener();
+                window.cutiListener = null;
+            }
+            console.log('All realtime listeners cleaned up');
+        }
+
+        // =============================================
         // NEW: ATTENDANCE SUMMARY FUNCTIONS - DIPERBAIKI
         // =============================================
 
@@ -2789,7 +2940,7 @@
             return false;
         }
 
-        // Fungsi untuk login dengan error handling
+        // PERBAIKAN: Fungsi untuk login dengan error handling dan setup realtime
         async function login(email, password) {
             showLoading(true);
             
@@ -2848,6 +2999,9 @@
                 setupMenuByRole(currentUser.role);
                 setupFilterByRole(currentUser.role);
                 
+                // PERBAIKAN: Setup realtime listeners setelah login
+                setupRealtimeListeners();
+                
                 // Load initial data
                 await loadInitialData();
                 
@@ -2862,7 +3016,7 @@
             }
         }
 
-        // Fungsi untuk load data initial dengan error handling
+        // PERBAIKAN: Fungsi untuk load data initial dengan error handling
         async function loadInitialData() {
             showLoading(true);
             
@@ -2965,7 +3119,7 @@
             }
         }
 
-        // PERBAIKAN: Fungsi untuk memuat data overtime calculation
+        // PERBAIKAN: Fungsi untuk memuat data overtime calculation dengan realtime updates
         async function loadOvertimeCalculationData() {
             try {
                 const overtimeSnapshot = await db.collection('overtime').get();
@@ -4100,8 +4254,11 @@
             });
         }
 
-        // Fungsi untuk logout
+        // PERBAIKAN: Fungsi untuk logout dengan cleanup listeners
         function logout() {
+            // Cleanup realtime listeners
+            cleanupRealtimeListeners();
+            
             auth.signOut().then(() => {
                 currentUser = null;
                 // Reset UI ke state login
@@ -4818,9 +4975,18 @@
         // PERBAIKAN: Fungsi untuk memuat semua data overtime (untuk admin)
         async function loadAllOvertimeData() {
             try {
-                const querySnapshot = await db.collection('overtimeRecords')
-                    .orderBy('date', 'desc')
-                    .get();
+                let query;
+                if (currentUser.role === 'admin') {
+                    // Admin bisa melihat semua data
+                    query = db.collection('overtimeRecords').orderBy('date', 'desc');
+                } else {
+                    // User biasa hanya bisa melihat data sendiri
+                    query = db.collection('overtimeRecords')
+                        .where('employeeEmail', '==', currentUser.email)
+                        .orderBy('date', 'desc');
+                }
+                
+                const querySnapshot = await query.get();
                 
                 rekapLemburData = [];
                 querySnapshot.forEach(doc => {
@@ -5644,6 +5810,12 @@
                 
                 // Update password
                 await user.updatePassword(newPassword);
+                
+                // PERBAIKAN: Update password di Firestore juga
+                await db.collection('users').doc(user.uid).update({
+                    password: newPassword,
+                    passwordUpdatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
                 
                 showNotification('Password changed successfully', 'success');
                 
