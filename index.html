@@ -4745,6 +4745,11 @@
                 if (processedEmployees.has(employee.name)) return; // Skip jika sudah diproses
                 processedEmployees.add(employee.name);
                 
+                // PERBAIKAN: Untuk user biasa, hanya proses dirinya sendiri
+                if (currentUser.role === 'user' && employee.name !== currentUser.name) {
+                    return;
+                }
+                
                 // Hitung sisa cuti untuk karyawan ini
                 const remainingLeave = calculateRemainingLeave(employee.name);
                 
@@ -4785,6 +4790,12 @@
 
         // PERBAIKAN: Fungsi untuk melihat detail leave dengan tombol delete
         function viewLeaveDetails(employeeName) {
+            // PERBAIKAN: Untuk user biasa, pastikan hanya bisa melihat detail dirinya sendiri
+            if (currentUser.role === 'user' && employeeName !== currentUser.name) {
+                showNotification('You can only view your own leave details', 'error');
+                return;
+            }
+            
             // Filter cuti data berdasarkan employeeName
             const employeeLeaves = cutiData.filter(cuti => cuti.employeeName === employeeName);
             
@@ -4806,9 +4817,11 @@
                         <td>${leave.duration}</td>
                         <td>${leave.remarks || '-'}</td>
                         <td>
-                            <button class="btn-delete-cuti" onclick="deleteCutiRow('${leave.id}')">
-                                <i class="fas fa-trash"></i> Delete
-                            </button>
+                            ${currentUser.role === 'admin' ? `
+                                <button class="btn-delete-cuti" onclick="deleteCutiRow('${leave.id}')">
+                                    <i class="fas fa-trash"></i> Delete
+                                </button>
+                            ` : ''}
                         </td>
                     `;
                     tbody.appendChild(row);
