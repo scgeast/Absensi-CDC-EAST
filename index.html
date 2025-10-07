@@ -1798,6 +1798,21 @@
                         </button>
                     </div>
 
+                    <!-- PERBAIKAN: Filter Employee Name untuk Admin -->
+                    <div class="overtime-controls">
+                        <div class="overtime-filter" id="overtimeEmployeeNameFilterContainer">
+                            <label for="overtimeEmployeeNameFilter" class="form-label me-2">Employee Name:</label>
+                            <select class="form-select form-select-sm" id="overtimeEmployeeNameFilter">
+                                <option value="all">All Employees</option>
+                                <!-- Options will be filled by JavaScript -->
+                            </select>
+                        </div>
+                        <div class="total-overtime-container">
+                            <span class="me-2">Total Overtime:</span>
+                            <span class="total-overtime-value" id="totalOvertimeValue">00:00</span>
+                        </div>
+                    </div>
+
                     <button type="button" class="collapsible">Overtime Calculation <i class="fas fa-chevron-down"></i></button>
                     <div class="collapsible-content">
                         <p class="small">Here you can manage employee overtime calculation.</p>
@@ -2066,7 +2081,7 @@
                                         <th>Plant Name</th>
                                         <th>Volume (m3)</th>
                                         <th>Task Description</th>
-                                        <!-- PERBAIKAN: Hilangkan kolom Action untuk admin di overtime detail -->
+                                        <th>Action</th> <!-- PERBAIKAN: Kolom Action untuk edit/delete -->
                                     </tr>
                                 </thead>
                                 <tbody id="overtimeDetailTableBody">
@@ -3678,7 +3693,12 @@
             // PERBAIKAN: Filter data berdasarkan date range Overtime & Output
             const startDateOvertimeOutput = document.getElementById('startDateOvertimeOutput').valueAsDate;
             const endDateOvertimeOutput = document.getElementById('endDateOvertimeOutput').valueAsDate;
-            const employeeFilterOvertimeOutput = document.getElementById('employeeNameOvertimeOutput').value;
+            
+            // PERBAIKAN: Tambah filter Employee Name untuk admin
+            let employeeFilterOvertimeOutput = 'all';
+            if (currentUser.role === 'admin') {
+                employeeFilterOvertimeOutput = document.getElementById('overtimeEmployeeNameFilter').value || 'all';
+            }
             
             let filteredOvertimeData = overtimeCalcData.filter(data => {
                 const dataDate = parseDateFromString(data.date);
@@ -4211,6 +4231,9 @@
                     menu.style.display = 'flex';
                 });
                 document.querySelector('[data-tab="setting"]').style.display = 'flex';
+                
+                // PERBAIKAN: Tampilkan filter employee name untuk admin di overtime calculation
+                document.getElementById('overtimeEmployeeNameFilterContainer').style.display = 'flex';
             }
             
             // Tampilkan logout untuk semua role
@@ -4990,17 +5013,28 @@
             const rowCount = tableBody.rows.length;
             
             const row = tableBody.insertRow();
+            
+            // PERBAIKAN: Untuk user biasa, hanya tampilkan tombol view untuk data mereka sendiri
+            let actionCell = '';
+            if (currentUser.role === 'admin' || currentUser.name === cutiDetail.employeeName) {
+                actionCell = `
+                    <td>
+                        <button class="btn btn-info btn-sm view-leave-details" onclick="viewLeaveDetails('${cutiDetail.employeeName}')">
+                            <i class="fas fa-eye"></i> View
+                        </button>
+                    </td>
+                `;
+            } else {
+                actionCell = '<td></td>';
+            }
+            
             row.innerHTML = `
                 <td>${rowCount + 1}</td>
                 <td>${cutiDetail.employeeName}</td>
                 <td>${cutiDetail.workArea}</td>
                 <td>${cutiDetail.position}</td>
                 <td>${cutiDetail.remainingLeave}</td>
-                <td>
-                    <button class="btn btn-info btn-sm view-leave-details" onclick="viewLeaveDetails('${cutiDetail.employeeName}')">
-                        <i class="fas fa-eye"></i> View
-                    </button>
-                </td>
+                ${actionCell}
             `;
         }
 
@@ -5598,7 +5632,7 @@
             
             if (filteredData.length === 0) {
                 const row = document.createElement('tr');
-                row.innerHTML = `<td colspan="11" class="text-center">No overtime data found</td>`;
+                row.innerHTML = `<td colspan="12" class="text-center">No overtime data found</td>`;
                 tbody.appendChild(row);
                 return;
             }
@@ -5613,6 +5647,24 @@
                         if (currentUser.role === 'user') {
                             row.classList.add('user-overtime-detail');
                         }
+                        
+                        // PERBAIKAN: Untuk user biasa, jangan tampilkan kolom Action
+                        let actionCell = '';
+                        if (currentUser.role === 'admin') {
+                            actionCell = `
+                                <td>
+                                    <div class="btn-group btn-group-sm">
+                                        <button class="btn btn-warning" onclick="editOvertimeRecord('${record.id}')">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                        <button class="btn btn-danger" onclick="deleteOvertimeRecord('${record.id}')">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            `;
+                        }
+                        
                         row.innerHTML = `
                             <td>${rowNumber++}</td>
                             <td>${record.employeeName}</td>
@@ -5625,6 +5677,7 @@
                             <td>${tableRow.plantNames || ''}</td>
                             <td>${tableRow.volume || ''}</td>
                             <td>${index === 0 ? record.taskDescription : ''}</td>
+                            ${actionCell}
                         `;
                         tbody.appendChild(row);
                     });
@@ -5635,6 +5688,24 @@
                     if (currentUser.role === 'user') {
                         row.classList.add('user-overtime-detail');
                     }
+                    
+                    // PERBAIKAN: Untuk user biasa, jangan tampilkan kolom Action
+                    let actionCell = '';
+                    if (currentUser.role === 'admin') {
+                        actionCell = `
+                            <td>
+                                <div class="btn-group btn-group-sm">
+                                    <button class="btn btn-warning" onclick="editOvertimeRecord('${record.id}')">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    <button class="btn btn-danger" onclick="deleteOvertimeRecord('${record.id}')">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        `;
+                    }
+                    
                     row.innerHTML = `
                         <td>${rowNumber++}</td>
                         <td>${record.employeeName}</td>
@@ -5647,6 +5718,7 @@
                         <td></td>
                         <td></td>
                         <td>${record.taskDescription}</td>
+                        ${actionCell}
                     `;
                     tbody.appendChild(row);
                 }
@@ -5672,8 +5744,12 @@
             document.getElementById('rekapEndTime').value = record.endTime;
             document.getElementById('uraianTugas').value = record.taskDescription;
             
-            // Hapus record lama
+            // Hapus record lama tapi simpan dulu data untuk update Overtime Calculation
+            const oldRecord = { ...record };
             await deleteOvertimeRecord(recordId, false);
+            
+            // PERBAIKAN: Update Overtime Calculation setelah edit
+            await updateOvertimeCalculationAfterEdit(oldRecord);
             
             showNotification('Overtime record loaded for editing', 'info');
         }
@@ -5690,10 +5766,18 @@
             }
             
             try {
+                // Simpan data record sebelum dihapus untuk update Overtime Calculation
+                const recordToDelete = rekapLemburData.find(r => r.id === recordId);
+                
                 await db.collection('overtimeRecords').doc(recordId).delete();
                 
                 // Hapus dari data lokal
                 rekapLemburData = rekapLemburData.filter(record => record.id !== recordId);
+                
+                // PERBAIKAN: Update Overtime Calculation setelah delete
+                if (recordToDelete) {
+                    await updateOvertimeCalculationAfterDelete(recordToDelete);
+                }
                 
                 // Update tampilan
                 updateOvertimeDetailTable();
@@ -5911,6 +5995,104 @@
                 
             } catch (error) {
                 console.error('Error creating new overtime calculation record:', error);
+            }
+        }
+
+        // PERBAIKAN: Fungsi untuk update Overtime Calculation setelah edit
+        async function updateOvertimeCalculationAfterEdit(oldRecord) {
+            try {
+                // Format tanggal untuk pencarian (DD/MM/YYYY)
+                const formattedDate = formatDateForShift(new Date(oldRecord.date));
+                
+                // Cari data overtime calculation yang sesuai berdasarkan nama dan tanggal
+                const overtimeSnapshot = await db.collection('overtime')
+                    .where('name', '==', oldRecord.employeeName)
+                    .where('date', '==', formattedDate)
+                    .get();
+                
+                if (!overtimeSnapshot.empty) {
+                    const batch = db.batch();
+                    
+                    overtimeSnapshot.forEach(doc => {
+                        // Update existing record - hapus RKP PIC dan Remarks karena record di Overtime Form dihapus
+                        const docRef = db.collection('overtime').doc(doc.id);
+                        
+                        batch.update(docRef, {
+                            rkpPIC: "",
+                            remarks: "",
+                            lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
+                        });
+                        
+                        // Update local data
+                        const localItem = overtimeCalcData.find(d => d.id === doc.id);
+                        if (localItem) {
+                            localItem.rkpPIC = "";
+                            localItem.remarks = "";
+                        }
+                    });
+                    
+                    await batch.commit();
+                    console.log('Berhasil mengupdate Overtime Calculation setelah edit');
+                    
+                    // Refresh data overtime calculation
+                    await loadOvertimeCalculationData();
+                    
+                    // Update table if currently viewing overtime tab
+                    if (currentTab === "overtime") {
+                        updateOvertimeTable();
+                    }
+                }
+            } catch (error) {
+                console.error('Error updating overtime calculation after edit:', error);
+            }
+        }
+
+        // PERBAIKAN: Fungsi untuk update Overtime Calculation setelah delete
+        async function updateOvertimeCalculationAfterDelete(deletedRecord) {
+            try {
+                // Format tanggal untuk pencarian (DD/MM/YYYY)
+                const formattedDate = formatDateForShift(new Date(deletedRecord.date));
+                
+                // Cari data overtime calculation yang sesuai berdasarkan nama dan tanggal
+                const overtimeSnapshot = await db.collection('overtime')
+                    .where('name', '==', deletedRecord.employeeName)
+                    .where('date', '==', formattedDate)
+                    .get();
+                
+                if (!overtimeSnapshot.empty) {
+                    const batch = db.batch();
+                    
+                    overtimeSnapshot.forEach(doc => {
+                        // Update existing record - hapus RKP PIC dan Remarks karena record di Overtime Form dihapus
+                        const docRef = db.collection('overtime').doc(doc.id);
+                        
+                        batch.update(docRef, {
+                            rkpPIC: "",
+                            remarks: "",
+                            lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
+                        });
+                        
+                        // Update local data
+                        const localItem = overtimeCalcData.find(d => d.id === doc.id);
+                        if (localItem) {
+                            localItem.rkpPIC = "";
+                            localItem.remarks = "";
+                        }
+                    });
+                    
+                    await batch.commit();
+                    console.log('Berhasil mengupdate Overtime Calculation setelah delete');
+                    
+                    // Refresh data overtime calculation
+                    await loadOvertimeCalculationData();
+                    
+                    // Update table if currently viewing overtime tab
+                    if (currentTab === "overtime") {
+                        updateOvertimeTable();
+                    }
+                }
+            } catch (error) {
+                console.error('Error updating overtime calculation after delete:', error);
             }
         }
 
