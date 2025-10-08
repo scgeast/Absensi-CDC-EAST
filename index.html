@@ -1610,6 +1610,10 @@
                         <button class="btn btn-futuristic btn-sm flex-fill" id="exportExcelMain">
                             <i class="fas fa-file-excel me-1"></i> Export
                         </button>
+                        <!-- PERBAIKAN: Tombol Refresh -->
+                        <button class="btn btn-futuristic btn-sm flex-fill" id="refreshMainBtn">
+                            <i class="fas fa-sync-alt me-1"></i> Refresh
+                        </button>
                     </div>
                 </div>
             </div>
@@ -1626,7 +1630,15 @@
                             <input type="date" class="form-control" id="endDateOvertimeOutput">
                         </div>
                     </div>
+                    <!-- PERBAIKAN: Filter Employee Name untuk Overtime Calculation -->
                     <div class="col-12 col-md-6 col-lg-4" id="employeeFilterContainerOvertimeOutput">
+                        <label for="overtimeEmployeeName" class="form-label">Employee Name</label>
+                        <select class="form-select form-select-sm" id="overtimeEmployeeName">
+                            <option value="all">Select All</option>
+                            <!-- Options will be filled by JavaScript -->
+                        </select>
+                    </div>
+                    <div class="col-12 col-md-6 col-lg-4" id="employeeFilterContainerOvertimeOutput2">
                         <label for="employeeNameOvertimeOutput" class="form-label">Employee Name</label>
                         <select class="form-select form-select-sm" id="employeeNameOvertimeOutput">
                             <option value="all">Select All</option>
@@ -1639,6 +1651,10 @@
                         </button>
                         <button class="btn btn-futuristic btn-sm flex-fill" id="exportExcelOvertimeOutput">
                             <i class="fas fa-file-excel me-1"></i> Export
+                        </button>
+                        <!-- PERBAIKAN: Tombol Refresh -->
+                        <button class="btn btn-futuristic btn-sm flex-fill" id="refreshOvertimeOutputBtn">
+                            <i class="fas fa-sync-alt me-1"></i> Refresh
                         </button>
                     </div>
                 </div>
@@ -1669,6 +1685,10 @@
                         </button>
                         <button class="btn btn-futuristic btn-sm flex-fill" id="exportExcelAbsenTabel">
                             <i class="fas fa-file-excel me-1"></i> Export
+                        </button>
+                        <!-- PERBAIKAN: Tombol Refresh -->
+                        <button class="btn btn-futuristic btn-sm flex-fill" id="refreshAbsenTabelBtn">
+                            <i class="fas fa-sync-alt me-1"></i> Refresh
                         </button>
                     </div>
                 </div>
@@ -3094,7 +3114,7 @@
                 const deleteBatch = db.batch();
                 existingOvertime.forEach(item => {
                     const docRef = db.collection('overtime').doc(item.id);
-                    deleteBatch.delete(docRef);
+                    deleteBatch.delete(doc.ref);
                 });
                 await deleteBatch.commit();
                 console.log('Deleted all existing overtime data for refresh');
@@ -3521,7 +3541,7 @@
             }
         }
 
-        // Fungsi untuk menyimpan data dengan offline support
+        // PERBAIKAN: Fungsi untuk menyimpan data dengan offline support - TIDAK MENGHAPUS DATA LAMA
         async function saveDataToFirestore() {
             if (isSaving) return; // Prevent multiple saves
             isSaving = true;
@@ -3536,7 +3556,7 @@
             
             try {
                 // Collect data from table
-                absensiData = [];
+                const newAbsensiData = [];
                 const rows = document.querySelectorAll('#entryTable tbody tr');
                 
                 rows.forEach(row => {
@@ -3563,20 +3583,46 @@
                         }
                     });
                     
-                    absensiData.push({ area, name, position, shifts });
+                    newAbsensiData.push({ area, name, position, shifts });
                 });
                 
-                // Save to Firestore in batch
+                // PERBAIKAN: Update data di Firestore tanpa menghapus data lama
                 const batch = db.batch();
                 
-                // Clear existing data
-                const absensiSnapshot = await db.collection('absensi').get();
-                absensiSnapshot.forEach(doc => {
-                    batch.delete(doc.ref);
-                });
+                // Hapus data untuk rentang tanggal yang sedang diedit saja
+                const startDate = document.getElementById('startDateMain').valueAsDate;
+                const endDate = document.getElementById('endDateMain').valueAsDate;
                 
-                // Add new data
-                absensiData.forEach(data => {
+                if (startDate && endDate) {
+                    // Format tanggal untuk query
+                    const startDateStr = formatDateForShift(startDate);
+                    const endDateStr = formatDateForShift(endDate);
+                    
+                    // Cari data yang ada di rentang tanggal ini
+                    const existingData = await db.collection('absensi').get();
+                    
+                    existingData.forEach(doc => {
+                        const data = doc.data();
+                        let hasOverlap = false;
+                        
+                        // Cek apakah data ini memiliki tanggal yang overlap dengan rentang yang sedang diedit
+                        if (data.shifts) {
+                            Object.keys(data.shifts).forEach(date => {
+                                if (date >= startDateStr && date <= endDateStr) {
+                                    hasOverlap = true;
+                                }
+                            });
+                        }
+                        
+                        // Jika ada overlap, hapus data lama
+                        if (hasOverlap) {
+                            batch.delete(doc.ref);
+                        }
+                    });
+                }
+                
+                // Tambahkan data baru
+                newAbsensiData.forEach(data => {
                     const docRef = db.collection('absensi').doc();
                     batch.set(docRef, data);
                 });
@@ -3591,6 +3637,9 @@
                 
                 await batch.commit();
                 console.log('Data saved successfully');
+                
+                // Update local data
+                absensiData = newAbsensiData;
                 
                 // Generate output and overtime calculation data
                 generateOutputAndOvertimeData();
@@ -3678,7 +3727,7 @@
             // PERBAIKAN: Filter data berdasarkan date range Overtime & Output
             const startDateOvertimeOutput = document.getElementById('startDateOvertimeOutput').valueAsDate;
             const endDateOvertimeOutput = document.getElementById('endDateOvertimeOutput').valueAsDate;
-            const employeeFilterOvertimeOutput = document.getElementById('employeeNameOvertimeOutput').value;
+            const employeeFilterOvertimeOutput = document.getElementById('overtimeEmployeeName').value;
             
             let filteredOvertimeData = overtimeCalcData.filter(data => {
                 const dataDate = parseDateFromString(data.date);
@@ -4223,14 +4272,20 @@
             const employeeFilterContainerOvertimeOutput = document.getElementById('employeeFilterContainerOvertimeOutput');
             const employeeFilterContainerAbsenTabel = document.getElementById('employeeFilterContainerAbsenTabel');
             
-            // PERBAIKAN: Sembunyikan filter employee untuk semua role
-            employeeFilterContainerMain.style.display = 'none';
-            employeeFilterContainerOvertimeOutput.style.display = 'none';
-            employeeFilterContainerAbsenTabel.style.display = 'none';
+            // PERBAIKAN: Tampilkan filter employee untuk admin
+            if (role === 'admin') {
+                employeeFilterContainerMain.style.display = 'block';
+                employeeFilterContainerOvertimeOutput.style.display = 'block';
+                employeeFilterContainerAbsenTabel.style.display = 'block';
+            } else {
+                employeeFilterContainerMain.style.display = 'none';
+                employeeFilterContainerOvertimeOutput.style.display = 'none';
+                employeeFilterContainerAbsenTabel.style.display = 'none';
+            }
         }
 
-        // Fungsi untuk apply filter tanggal Main folder
-        function applyDateFilterMain() {
+        // PERBAIKAN: Fungsi untuk apply filter tanggal Main folder dengan pencarian data otomatis
+        async function applyDateFilterMain() {
             const startDate = document.getElementById('startDateMain').valueAsDate;
             const endDate = document.getElementById('endDateMain').valueAsDate;
             
@@ -4251,11 +4306,78 @@
                 document.getElementById('endDateMain').valueAsDate = dateRangeMain[dateRangeMain.length - 1];
             }
             
+            // PERBAIKAN: Load data dari Firestore berdasarkan rentang tanggal
+            await loadAbsensiDataByDateRange();
+            
             updateEntryTable();
         }
 
+        // PERBAIKAN: Fungsi untuk load data absensi berdasarkan rentang tanggal
+        async function loadAbsensiDataByDateRange() {
+            try {
+                showLoading(true);
+                
+                const startDate = document.getElementById('startDateMain').valueAsDate;
+                const endDate = document.getElementById('endDateMain').valueAsDate;
+                
+                if (!startDate || !endDate) {
+                    showLoading(false);
+                    return;
+                }
+                
+                // Format tanggal untuk query
+                const startDateStr = formatDateForShift(startDate);
+                const endDateStr = formatDateForShift(endDate);
+                
+                // Load semua data absensi
+                const absensiSnapshot = await db.collection('absensi').get();
+                
+                absensiData = [];
+                absensiSnapshot.forEach(doc => {
+                    const data = doc.data();
+                    
+                    // Cek apakah data ini memiliki tanggal dalam rentang yang dipilih
+                    let hasRelevantData = false;
+                    const filteredShifts = {};
+                    
+                    if (data.shifts) {
+                        Object.keys(data.shifts).forEach(date => {
+                            if (date >= startDateStr && date <= endDateStr) {
+                                hasRelevantData = true;
+                                filteredShifts[date] = data.shifts[date];
+                            }
+                        });
+                    }
+                    
+                    // Jika data memiliki tanggal yang relevan, tambahkan ke absensiData
+                    if (hasRelevantData) {
+                        absensiData.push({
+                            id: doc.id,
+                            area: data.area,
+                            name: data.name,
+                            position: data.position,
+                            shifts: filteredShifts
+                        });
+                    }
+                });
+                
+                console.log('Loaded absensi data:', absensiData.length, 'employees');
+                
+                // Jika tidak ada data, gunakan data awal
+                if (absensiData.length === 0) {
+                    absensiData = [...initialEmployees];
+                }
+                
+                showLoading(false);
+                
+            } catch (error) {
+                console.error('Error loading absensi data by date range:', error);
+                showLoading(false);
+            }
+        }
+
         // PERBAIKAN: Fungsi untuk apply filter tanggal Overtime & Output
-        function applyDateFilterOvertimeOutput() {
+        async function applyDateFilterOvertimeOutput() {
             const startDate = document.getElementById('startDateOvertimeOutput').valueAsDate;
             const endDate = document.getElementById('endDateOvertimeOutput').valueAsDate;
             
@@ -4276,6 +4398,9 @@
                 document.getElementById('endDateOvertimeOutput').valueAsDate = dateRangeOvertimeOutput[dateRangeOvertimeOutput.length - 1];
             }
             
+            // PERBAIKAN: Load data output dan overtime dari Firestore berdasarkan rentang tanggal
+            await loadOutputAndOvertimeDataByDateRange();
+            
             // Update tables yang menggunakan filter Overtime & Output
             if (currentTab === "output") {
                 updateOutputTable();
@@ -4287,12 +4412,100 @@
                 updateOvertimeDetailTable();
             }
             if (currentTab === "summary-overtime") {
-                updateOvertimeSummaryTable(); // NEW: Update overtime summary
+                updateOvertimeSummaryTable();
+            }
+        }
+
+        // PERBAIKAN: Fungsi untuk load data output dan overtime berdasarkan rentang tanggal
+        async function loadOutputAndOvertimeDataByDateRange() {
+            try {
+                showLoading(true);
+                
+                const startDate = document.getElementById('startDateOvertimeOutput').valueAsDate;
+                const endDate = document.getElementById('endDateOvertimeOutput').valueAsDate;
+                
+                if (!startDate || !endDate) {
+                    showLoading(false);
+                    return;
+                }
+                
+                // Format tanggal untuk query
+                const startDateStr = formatDateForShift(startDate);
+                const endDateStr = formatDateForShift(endDate);
+                
+                // Load semua data absensi
+                const absensiSnapshot = await db.collection('absensi').get();
+                
+                const allEmployees = [];
+                absensiSnapshot.forEach(doc => {
+                    const data = doc.data();
+                    if (data.name) {
+                        allEmployees.push({
+                            id: doc.id,
+                            area: data.area || 'CDC East',
+                            name: data.name,
+                            position: data.position || '',
+                            shifts: data.shifts || {}
+                        });
+                    }
+                });
+                
+                // Generate output data
+                outputData = [];
+                allEmployees.forEach(employee => {
+                    Object.keys(employee.shifts || {}).forEach(dateStr => {
+                        // Cek apakah tanggal dalam rentang yang dipilih
+                        if (dateStr >= startDateStr && dateStr <= endDateStr) {
+                            const shiftCode = employee.shifts[dateStr];
+                            
+                            // Get shift details from shiftMatrix
+                            const shiftDetails = shiftMatrix[employee.position] && shiftMatrix[employee.position][shiftCode];
+                            
+                            if (shiftDetails) {
+                                outputData.push({
+                                    area: employee.area,
+                                    name: employee.name,
+                                    position: employee.position,
+                                    date: dateStr,
+                                    shift: shiftDetails.name,
+                                    shiftCheckIn: shiftDetails.checkIn,
+                                    shiftCheckOut: shiftDetails.checkOut,
+                                    remarks: ""
+                                });
+                            }
+                        }
+                    });
+                });
+                
+                // Load overtime calculation data
+                const overtimeSnapshot = await db.collection('overtime').get();
+                
+                overtimeCalcData = [];
+                overtimeSnapshot.forEach(doc => {
+                    const data = doc.data();
+                    
+                    // Cek apakah tanggal dalam rentang yang dipilih
+                    if (data.date >= startDateStr && data.date <= endDateStr) {
+                        overtimeCalcData.push({
+                            id: doc.id,
+                            ...data
+                        });
+                    }
+                });
+                
+                console.log('Loaded output data:', outputData.length, 'records');
+                console.log('Loaded overtime data:', overtimeCalcData.length, 'records');
+                
+                showLoading(false);
+                
+            } catch (error) {
+                console.error('Error loading output and overtime data by date range:', error);
+                showLoading(false);
             }
         }
 
         // PERBAIKAN: Fungsi untuk apply filter tanggal Attendance Table
-        function applyDateFilterAbsenTabel() {
+        async function applyDateFilterAbsenTabel() {
             const startDate = document.getElementById('startDateAbsenTabel').valueAsDate;
             const endDate = document.getElementById('endDateAbsenTabel').valueAsDate;
             
@@ -4313,12 +4526,74 @@
                 document.getElementById('endDateAbsenTabel').valueAsDate = dateRangeAbsenTabel[dateRangeAbsenTabel.length - 1];
             }
             
+            // PERBAIKAN: Load data absen tabel dari Firestore berdasarkan rentang tanggal
+            await loadAbsenTabelDataByDateRange();
+            
             // Update tables yang menggunakan filter Absen Tabel
             if (currentTab === "absen-tabel") {
                 updateAbsenTabelTable();
             }
             if (currentTab === "cuti-detail") {
                 generateCutiDetailData();
+            }
+        }
+
+        // PERBAIKAN: Fungsi untuk load data absen tabel berdasarkan rentang tanggal
+        async function loadAbsenTabelDataByDateRange() {
+            try {
+                showLoading(true);
+                
+                const startDate = document.getElementById('startDateAbsenTabel').valueAsDate;
+                const endDate = document.getElementById('endDateAbsenTabel').valueAsDate;
+                
+                if (!startDate || !endDate) {
+                    showLoading(false);
+                    return;
+                }
+                
+                // Format tanggal untuk query
+                const startDateStr = formatDateForShift(startDate);
+                const endDateStr = formatDateForShift(endDate);
+                
+                // Load semua data absen tabel
+                const absenTabelSnapshot = await db.collection('absenTabel').get();
+                
+                absenTabelData = [];
+                absenTabelSnapshot.forEach(doc => {
+                    const data = doc.data();
+                    
+                    // Cek apakah data ini memiliki tanggal dalam rentang yang dipilih
+                    let hasRelevantData = false;
+                    const filteredShifts = {};
+                    
+                    if (data.shifts) {
+                        Object.keys(data.shifts).forEach(date => {
+                            if (date >= startDateStr && date <= endDateStr) {
+                                hasRelevantData = true;
+                                filteredShifts[date] = data.shifts[date];
+                            }
+                        });
+                    }
+                    
+                    // Jika data memiliki tanggal yang relevan, tambahkan ke absenTabelData
+                    if (hasRelevantData) {
+                        absenTabelData.push({
+                            id: doc.id,
+                            area: data.area,
+                            name: data.name,
+                            position: data.position,
+                            shifts: filteredShifts
+                        });
+                    }
+                });
+                
+                console.log('Loaded absen tabel data:', absenTabelData.length, 'employees');
+                
+                showLoading(false);
+                
+            } catch (error) {
+                console.error('Error loading absen tabel data by date range:', error);
+                showLoading(false);
             }
         }
 
@@ -5959,6 +6234,7 @@
                     // PERBAIKAN: Isi otomatis RKP PIC dengan Duration dan Remarks dengan uraian tugas
                     rkpPIC: overtimeRecord.overtimeDuration, // Ambil dari kolom Duration
                     rmcShiftCheckOut: "",
+                    // Isi remarks hanya jika ada lembur
                     remarks: overtimeRecord.taskDescription || 'Overtime recorded', // Ambil dari uraian tugas
                     createdFromOvertimeForm: true,
                     createdAt: firebase.firestore.FieldValue.serverTimestamp()
