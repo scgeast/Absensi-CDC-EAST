@@ -2066,7 +2066,7 @@
                                         <th>Plant Name</th>
                                         <th>Volume (m3)</th>
                                         <th>Task Description</th>
-                                        <!-- PERBAIKAN: Hilangkan kolom Action untuk admin di overtime detail -->
+                                        <th>Action</th> <!-- PERBAIKAN: Kolom Action untuk edit/delete -->
                                     </tr>
                                 </thead>
                                 <tbody id="overtimeDetailTableBody">
@@ -5598,7 +5598,7 @@
             
             if (filteredData.length === 0) {
                 const row = document.createElement('tr');
-                row.innerHTML = `<td colspan="11" class="text-center">No overtime data found</td>`;
+                row.innerHTML = `<td colspan="12" class="text-center">No overtime data found</td>`;
                 tbody.appendChild(row);
                 return;
             }
@@ -5625,6 +5625,14 @@
                             <td>${tableRow.plantNames || ''}</td>
                             <td>${tableRow.volume || ''}</td>
                             <td>${index === 0 ? record.taskDescription : ''}</td>
+                            <td>
+                                <button class="btn btn-warning btn-sm me-1" onclick="editOvertimeRecord('${record.id}')">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <button class="btn btn-danger btn-sm" onclick="deleteOvertimeRecord('${record.id}')">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </td>
                         `;
                         tbody.appendChild(row);
                     });
@@ -5647,6 +5655,14 @@
                         <td></td>
                         <td></td>
                         <td>${record.taskDescription}</td>
+                        <td>
+                            <button class="btn btn-warning btn-sm me-1" onclick="editOvertimeRecord('${record.id}')">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button class="btn btn-danger btn-sm" onclick="deleteOvertimeRecord('${record.id}')">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </td>
                     `;
                     tbody.appendChild(row);
                 }
@@ -5690,22 +5706,91 @@
             }
             
             try {
-                await db.collection('overtimeRecords').doc(recordId).delete();
+                // Dapatkan data yang akan dihapus
+                const recordToDelete = rekapLemburData.find(r => r.id === recordId);
                 
-                // Hapus dari data lokal
-                rekapLemburData = rekapLemburData.filter(record => record.id !== recordId);
-                
-                // Update tampilan
-                updateOvertimeDetailTable();
-                updateTotalOvertime();
-                
-                if (showConfirm) {
-                    showNotification('Overtime record deleted successfully', 'success');
+                if (recordToDelete) {
+                    // Hapus dari Firestore
+                    await db.collection('overtimeRecords').doc(recordId).delete();
+                    
+                    // Hapus dari data lokal
+                    rekapLemburData = rekapLemburData.filter(record => record.id !== recordId);
+                    
+                    // Update tampilan
+                    updateOvertimeDetailTable();
+                    updateTotalOvertime();
+                    
+                    // PERBAIKAN: Update Overtime Calculation jika ada perubahan
+                    if (recordToDelete.overtimeDuration || recordToDelete.taskDescription) {
+                        await updateOvertimeCalculationOnDelete(recordToDelete);
+                    }
+                    
+                    if (showConfirm) {
+                        showNotification('Overtime record deleted successfully', 'success');
+                    }
                 }
                 
             } catch (error) {
                 console.error('Error deleting overtime record:', error);
                 showNotification('Error deleting overtime record: ' + error.message, 'error');
+            }
+        }
+
+        // PERBAIKAN: Fungsi untuk update Overtime Calculation saat delete
+        async function updateOvertimeCalculationOnDelete(recordToDelete) {
+            try {
+                // Format tanggal untuk pencarian (DD/MM/YYYY)
+                const formattedDate = formatDateForShift(new Date(recordToDelete.date));
+                
+                console.log('Updating overtime calculation on delete:', {
+                    employee: recordToDelete.employeeName,
+                    date: formattedDate
+                });
+                
+                // Cari data overtime calculation yang sesuai
+                const overtimeSnapshot = await db.collection('overtime')
+                    .where('name', '==', recordToDelete.employeeName)
+                    .where('date', '==', formattedDate)
+                    .get();
+                
+                if (!overtimeSnapshot.empty) {
+                    const batch = db.batch();
+                    let updatedCount = 0;
+                    
+                    overtimeSnapshot.forEach(doc => {
+                        // Update existing record - hapus RKP PIC dan Remarks
+                        const docRef = db.collection('overtime').doc(doc.id);
+                        
+                        batch.update(docRef, {
+                            rkpPIC: "", // Kosongkan RKP PIC
+                            remarks: "", // Kosongkan Remarks
+                            lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
+                        });
+                        
+                        // Update local data
+                        const localItem = overtimeCalcData.find(d => d.id === doc.id);
+                        if (localItem) {
+                            localItem.rkpPIC = "";
+                            localItem.remarks = "";
+                        }
+                        
+                        updatedCount++;
+                    });
+                    
+                    await batch.commit();
+                    console.log(`Updated ${updatedCount} records in Firestore`);
+                    
+                    // Update table if currently viewing overtime tab
+                    if (currentTab === "overtime") {
+                        updateOvertimeTable();
+                    }
+                }
+                
+                console.log('Overtime calculation update on delete completed');
+                
+            } catch (error) {
+                console.error('Error updating overtime calculation on delete:', error);
+                // Tetap lanjutkan meski ada error di integrasi
             }
         }
 
