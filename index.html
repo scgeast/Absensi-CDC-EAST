@@ -3144,7 +3144,7 @@
                             const updateData = {
                                 area: emp.area,
                                 position: emp.position,
-                                shift: shiftDetails ? shiftDetails.name : existingItem.shift,
+                                shift: shift,
                                 shiftCheckIn: shiftDetails ? shiftDetails.checkIn : existingItem.shiftCheckIn,
                                 shiftCheckOut: shiftDetails ? shiftDetails.checkOut : existingItem.shiftCheckOut,
                                 wtNormal: shiftDetails ? shiftDetails.hours : existingItem.wtNormal,
@@ -3164,7 +3164,7 @@
                                 name: emp.name,
                                 position: emp.position,
                                 date: date,
-                                shift: shiftDetails ? shiftDetails.name : shift,
+                                shift: shift,
                                 shiftCheckIn: shiftDetails ? shiftDetails.checkIn : "",
                                 shiftCheckOut: shiftDetails ? shiftDetails.checkOut : "",
                                 wtNormal: shiftDetails ? shiftDetails.hours : "",
@@ -3302,7 +3302,7 @@
         }
 
         // =============================================
-        // PERBAIKAN: FUNGSI UNTUK FILTER DENGAN LOAD DATA DARI FIRESTORE
+        // PERBAIKAN: FUNGSI UNTUK FILTER DENGAN LOAD DATA DARI FIREBASE
         // =============================================
 
         // PERBAIKAN: Fungsi untuk apply filter Main dengan refresh data dari Firebase
@@ -3343,22 +3343,8 @@
                 // Apply filter tanggal
                 applyDateFilterOvertimeOutput();
                 
-                // Load ulang data overtime dari Firebase
-                await loadOvertimeCalculationData();
-                
-                // Update semua tabel yang terkait
-                if (currentTab === "output") {
-                    updateOutputTable();
-                }
-                if (currentTab === "overtime") {
-                    updateOvertimeTable();
-                }
-                if (currentTab === "form-rekap-lembur") {
-                    updateOvertimeDetailTable();
-                }
-                if (currentTab === "summary-overtime") {
-                    updateOvertimeSummaryTable();
-                }
+                // PERBAIKAN: Generate ulang data output dan overtime dari absensiData
+                generateOutputAndOvertimeData();
                 
                 showNotification('Overtime & Output filter applied and data refreshed', 'success');
             } catch (error) {
@@ -3410,40 +3396,27 @@
                 
                 let query = db.collection('absensi');
                 
-                // Jika ada filter tanggal, terapkan query filter
-                if (startDate && endDate) {
-                    // Konversi tanggal ke format yang sesuai
-                    const start = new Date(startDate);
-                    const end = new Date(endDate);
+                // Jika ada filter tanggal, load semua data dulu lalu filter di client
+                const snapshot = await query.get();
+                absensiData = [];
+                
+                snapshot.forEach(doc => {
+                    const data = {
+                        id: doc.id,
+                        ...doc.data()
+                    };
                     
-                    // Untuk koleksi absensi, kita perlu memfilter berdasarkan shifts
-                    // Karena struktur data berbeda, kita load semua lalu filter di client
-                    const snapshot = await query.get();
-                    absensiData = [];
-                    
-                    snapshot.forEach(doc => {
-                        const data = {
-                            id: doc.id,
-                            ...doc.data()
-                        };
-                        
-                        // Filter di client side berdasarkan apakah ada shift dalam range tanggal
-                        const hasShiftsInRange = hasShiftsInDateRange(data.shifts, start, end);
+                    // Filter di client side berdasarkan apakah ada shift dalam range tanggal
+                    if (startDate && endDate) {
+                        const hasShiftsInRange = hasShiftsInDateRange(data.shifts, new Date(startDate), new Date(endDate));
                         if (hasShiftsInRange) {
                             absensiData.push(data);
                         }
-                    });
-                } else {
-                    // Load semua data jika tidak ada filter
-                    const snapshot = await query.get();
-                    absensiData = [];
-                    snapshot.forEach(doc => {
-                        absensiData.push({
-                            id: doc.id,
-                            ...doc.data()
-                        });
-                    });
-                }
+                    } else {
+                        // Jika tidak ada filter, tambahkan semua data
+                        absensiData.push(data);
+                    }
+                });
                 
                 console.log('Absensi data loaded with filter:', absensiData.length, 'records');
                 
@@ -4018,7 +3991,7 @@
             });
         }
 
-        // PERBAIKAN: Fungsi untuk update overtime calculation table dengan filter terpisah
+        // PERBAIKAN: Fungsi untuk update overtime calculation table dengan data yang lengkap
         function updateOvertimeTable() {
             const tbody = document.querySelector('#overtimeTableBody');
             tbody.innerHTML = '';
