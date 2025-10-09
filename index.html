@@ -503,7 +503,7 @@
             background-color: #f8f9fa;
         }
 
-        /* PERBAIKAN: Navigasi keyboard untuk tabel */
+        /* PERBAIKAN: Navigasi keyboard untuk tabel - DIPERBAIKI */
         .editable-cell:focus {
             outline: 2px solid var(--accent-color);
             outline-offset: -2px;
@@ -2467,66 +2467,6 @@
                     console.error('Error in overtime realtime listener:', error);
                 });
 
-            // PERBAIKAN: Realtime listener untuk output
-            if (window.outputListener) {
-                window.outputListener(); // Hapus listener lama
-            }
-            
-            window.outputListener = db.collection('output')
-                .onSnapshot((snapshot) => {
-                    console.log('Output data updated:', snapshot.size, 'documents');
-                    
-                    outputData = [];
-                    snapshot.forEach(doc => {
-                        outputData.push({
-                            id: doc.id,
-                            ...doc.data()
-                        });
-                    });
-                    
-                    console.log('Data output dimuat:', outputData.length, 'records');
-                    
-                    // Update tampilan jika tab aktif
-                    if (currentTab === "output") {
-                        updateOutputTable();
-                    }
-                    
-                }, (error) => {
-                    console.error('Error in output realtime listener:', error);
-                });
-
-            // PERBAIKAN: Realtime listener untuk absenTabel
-            if (window.absenTabelListener) {
-                window.absenTabelListener(); // Hapus listener lama
-            }
-            
-            window.absenTabelListener = db.collection('absenTabel')
-                .onSnapshot((snapshot) => {
-                    console.log('Absen tabel data updated:', snapshot.size, 'documents');
-                    
-                    absenTabelData = [];
-                    snapshot.forEach(doc => {
-                        absenTabelData.push({
-                            id: doc.id,
-                            ...doc.data()
-                        });
-                    });
-                    
-                    console.log('Data absen tabel dimuat:', absenTabelData.length, 'records');
-                    
-                    // Update tampilan jika tab aktif
-                    if (currentTab === "absen-tabel") {
-                        updateAbsenTabelTable();
-                        updateAttendanceSummaryTable();
-                    }
-                    if (currentTab === "cuti-detail") {
-                        generateCutiDetailData();
-                    }
-                    
-                }, (error) => {
-                    console.error('Error in absen tabel realtime listener:', error);
-                });
-
             // Realtime listener untuk overtime form data
             if (window.overtimeFormListener) {
                 window.overtimeFormListener(); // Hapus listener lama
@@ -2623,14 +2563,6 @@
             if (window.overtimeListener) {
                 window.overtimeListener();
                 window.overtimeListener = null;
-            }
-            if (window.outputListener) {
-                window.outputListener();
-                window.outputListener = null;
-            }
-            if (window.absenTabelListener) {
-                window.absenTabelListener();
-                window.absenTabelListener = null;
             }
             if (window.overtimeFormListener) {
                 window.overtimeFormListener();
@@ -3370,7 +3302,282 @@
         }
 
         // =============================================
-        // EXISTING FUNCTIONS (modified to include new features)
+        // PERBAIKAN: FUNGSI UNTUK FILTER DENGAN LOAD DATA DARI FIREBASE
+        // =============================================
+
+        // PERBAIKAN: Fungsi untuk apply filter Main dengan refresh data dari Firebase
+        async function applyDateFilterMainWithRefresh() {
+            showLoading(true);
+            try {
+                // Simpan filter settings
+                localStorage.setItem('mainFilter', JSON.stringify({
+                    startDate: document.getElementById('startDateMain').value,
+                    endDate: document.getElementById('endDateMain').value
+                }));
+                
+                // Apply filter tanggal
+                applyDateFilterMain();
+                
+                // Load ulang data dari Firebase berdasarkan filter
+                await loadAbsensiDataWithFilter();
+                
+                showNotification('Main filter applied and data refreshed', 'success');
+            } catch (error) {
+                console.error('Error applying main filter:', error);
+                showNotification('Error applying filter: ' + error.message, 'error');
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        // PERBAIKAN: Fungsi untuk apply filter Overtime & Output dengan refresh data dari Firebase
+        async function applyDateFilterOvertimeOutputWithRefresh() {
+            showLoading(true);
+            try {
+                // Simpan filter settings
+                localStorage.setItem('overtimeOutputFilter', JSON.stringify({
+                    startDate: document.getElementById('startDateOvertimeOutput').value,
+                    endDate: document.getElementById('endDateOvertimeOutput').value
+                }));
+                
+                // Apply filter tanggal
+                applyDateFilterOvertimeOutput();
+                
+                // Load ulang data overtime dari Firebase
+                await loadOvertimeCalculationData();
+                
+                // Update semua tabel yang terkait
+                if (currentTab === "output") {
+                    updateOutputTable();
+                }
+                if (currentTab === "overtime") {
+                    updateOvertimeTable();
+                }
+                if (currentTab === "form-rekap-lembur") {
+                    updateOvertimeDetailTable();
+                }
+                if (currentTab === "summary-overtime") {
+                    updateOvertimeSummaryTable();
+                }
+                
+                showNotification('Overtime & Output filter applied and data refreshed', 'success');
+            } catch (error) {
+                console.error('Error applying overtime output filter:', error);
+                showNotification('Error applying filter: ' + error.message, 'error');
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        // PERBAIKAN: Fungsi untuk apply filter Attendance Table dengan refresh data dari Firebase
+        async function applyDateFilterAbsenTabelWithRefresh() {
+            showLoading(true);
+            try {
+                // Simpan filter settings
+                localStorage.setItem('absenTabelFilter', JSON.stringify({
+                    startDate: document.getElementById('startDateAbsenTabel').value,
+                    endDate: document.getElementById('endDateAbsenTabel').value
+                }));
+                
+                // Apply filter tanggal
+                applyDateFilterAbsenTabel();
+                
+                // Load ulang data absen tabel dari Firebase
+                await loadAbsenTabelData();
+                
+                // Update tabel yang terkait
+                if (currentTab === "absen-tabel") {
+                    updateAbsenTabelTable();
+                }
+                if (currentTab === "cuti-detail") {
+                    generateCutiDetailData();
+                }
+                
+                showNotification('Attendance Table filter applied and data refreshed', 'success');
+            } catch (error) {
+                console.error('Error applying attendance table filter:', error);
+                showNotification('Error applying filter: ' + error.message, 'error');
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        // PERBAIKAN: Fungsi untuk memuat data absensi dengan filter
+        async function loadAbsensiDataWithFilter() {
+            try {
+                const startDate = document.getElementById('startDateMain').value;
+                const endDate = document.getElementById('endDateMain').value;
+                
+                let query = db.collection('absensi');
+                
+                // Jika ada filter tanggal, terapkan query filter
+                if (startDate && endDate) {
+                    // Konversi tanggal ke format yang sesuai
+                    const start = new Date(startDate);
+                    const end = new Date(endDate);
+                    
+                    // Untuk koleksi absensi, kita perlu memfilter berdasarkan shifts
+                    // Karena struktur data berbeda, kita load semua lalu filter di client
+                    const snapshot = await query.get();
+                    absensiData = [];
+                    
+                    snapshot.forEach(doc => {
+                        const data = {
+                            id: doc.id,
+                            ...doc.data()
+                        };
+                        
+                        // Filter di client side berdasarkan apakah ada shift dalam range tanggal
+                        const hasShiftsInRange = hasShiftsInDateRange(data.shifts, start, end);
+                        if (hasShiftsInRange) {
+                            absensiData.push(data);
+                        }
+                    });
+                } else {
+                    // Load semua data jika tidak ada filter
+                    const snapshot = await query.get();
+                    absensiData = [];
+                    snapshot.forEach(doc => {
+                        absensiData.push({
+                            id: doc.id,
+                            ...doc.data()
+                        });
+                    });
+                }
+                
+                console.log('Absensi data loaded with filter:', absensiData.length, 'records');
+                
+                // Update tabel entry
+                updateEntryTable();
+                
+            } catch (error) {
+                console.error('Error loading absensi data with filter:', error);
+                // Fallback ke data yang ada
+                showNotification('Error loading filtered data, showing available data', 'warning');
+            }
+        }
+
+        // PERBAIKAN: Fungsi untuk mengecek apakah ada shifts dalam date range
+        function hasShiftsInDateRange(shifts, startDate, endDate) {
+            if (!shifts) return false;
+            
+            for (const dateStr in shifts) {
+                const shiftDate = parseDateFromString(dateStr);
+                if (shiftDate && shiftDate >= startDate && shiftDate <= endDate) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        // =============================================
+        // PERBAIKAN NAVIGASI KEYBOARD - DIPERBAIKI
+        // =============================================
+
+        // PERBAIKAN: Fungsi untuk setup navigasi keyboard yang benar
+        function setupKeyboardNavigation() {
+            const table = document.querySelector('#entryTable');
+            if (!table) return;
+            
+            // Hapus event listener lama jika ada
+            table.removeEventListener('keydown', handleKeyboardNavigation);
+            
+            // Tambahkan event listener baru
+            table.addEventListener('keydown', handleKeyboardNavigation);
+            
+            // Set focus pada sel yang diklik
+            table.addEventListener('click', function(e) {
+                if (e.target.classList.contains('editable-cell')) {
+                    currentFocusedCell = e.target;
+                    e.target.focus();
+                    e.target.select();
+                }
+            });
+            
+            // Set focus pada sel yang mendapat fokus
+            table.addEventListener('focusin', function(e) {
+                if (e.target.classList.contains('editable-cell')) {
+                    currentFocusedCell = e.target;
+                }
+            });
+        }
+
+        // PERBAIKAN: Fungsi untuk handle navigasi keyboard yang benar
+        function handleKeyboardNavigation(e) {
+            if (!currentFocusedCell) return;
+            
+            const cell = currentFocusedCell;
+            const row = cell.closest('tr');
+            const allCells = Array.from(row.querySelectorAll('td'));
+            const cellIndex = allCells.indexOf(cell.parentElement);
+            
+            let targetCell = null;
+            
+            switch(e.key) {
+                case 'ArrowUp':
+                    e.preventDefault();
+                    const prevRow = row.previousElementSibling;
+                    if (prevRow) {
+                        const prevCells = prevRow.querySelectorAll('td');
+                        if (prevCells[cellIndex]) {
+                            const input = prevCells[cellIndex].querySelector('.editable-cell');
+                            if (input) {
+                                targetCell = input;
+                            }
+                        }
+                    }
+                    break;
+                    
+                case 'ArrowDown':
+                    e.preventDefault();
+                    const nextRow = row.nextElementSibling;
+                    if (nextRow) {
+                        const nextCells = nextRow.querySelectorAll('td');
+                        if (nextCells[cellIndex]) {
+                            const input = nextCells[cellIndex].querySelector('.editable-cell');
+                            if (input) {
+                                targetCell = input;
+                            }
+                        }
+                    }
+                    break;
+                    
+                case 'ArrowLeft':
+                    e.preventDefault();
+                    if (cellIndex > 0) {
+                        const prevCell = allCells[cellIndex - 1];
+                        const input = prevCell.querySelector('.editable-cell');
+                        if (input) {
+                            targetCell = input;
+                        }
+                    }
+                    break;
+                    
+                case 'ArrowRight':
+                    e.preventDefault();
+                    if (cellIndex < allCells.length - 1) {
+                        const nextCell = allCells[cellIndex + 1];
+                        const input = nextCell.querySelector('.editable-cell');
+                        if (input) {
+                            targetCell = input;
+                        }
+                    }
+                    break;
+                    
+                case 'Tab':
+                    // Biarkan tab berjalan normal
+                    return;
+            }
+            
+            if (targetCell) {
+                targetCell.focus();
+                targetCell.select();
+                currentFocusedCell = targetCell;
+            }
+        }
+
+        // =============================================
+        // FUNGSI UTAMA YANG SUDAH ADA (dengan perbaikan)
         // =============================================
 
         // Fungsi untuk mengecek koneksi
@@ -3452,8 +3659,8 @@
                     if (userDoc.exists) {
                         userData = userDoc.data();
                         currentUser.role = userData.role;
-                        currentUser.name = userData.name || userData.email.split('@')[0]; // Gunakan name jika ada, jika tidak gunakan bagian email
-                        currentUser.position = userData.position || ''; // Simpan position juga
+                        currentUser.name = userData.name || userData.email.split('@')[0];
+                        currentUser.position = userData.position || '';
                     } else {
                         // Create default user data if doesn't exist
                         currentUser.role = "user";
@@ -4396,7 +4603,7 @@
         }
 
         // PERBAIKAN: Fungsi untuk apply filter tanggal Overtime & Output
-        async function applyDateFilterOvertimeOutput() {
+        function applyDateFilterOvertimeOutput() {
             const startDate = document.getElementById('startDateOvertimeOutput').valueAsDate;
             const endDate = document.getElementById('endDateOvertimeOutput').valueAsDate;
             
@@ -4423,9 +4630,6 @@
                 endDate: document.getElementById('endDateOvertimeOutput').value
             }));
             
-            // PERBAIKAN: Muat data dari Firebase dengan filter baru
-            await loadOutputDataWithFilter();
-            
             // Update tables yang menggunakan filter Overtime & Output
             if (currentTab === "output") {
                 updateOutputTable();
@@ -4437,12 +4641,12 @@
                 updateOvertimeDetailTable();
             }
             if (currentTab === "summary-overtime") {
-                updateOvertimeSummaryTable();
+                updateOvertimeSummaryTable(); // NEW: Update overtime summary
             }
         }
 
         // PERBAIKAN: Fungsi untuk apply filter tanggal Attendance Table
-        async function applyDateFilterAbsenTabel() {
+        function applyDateFilterAbsenTabel() {
             const startDate = document.getElementById('startDateAbsenTabel').valueAsDate;
             const endDate = document.getElementById('endDateAbsenTabel').valueAsDate;
             
@@ -4468,9 +4672,6 @@
                 startDate: document.getElementById('startDateAbsenTabel').value,
                 endDate: document.getElementById('endDateAbsenTabel').value
             }));
-            
-            // PERBAIKAN: Muat data dari Firebase dengan filter baru
-            await loadAbsenTabelDataWithFilter();
             
             // Update tables yang menggunakan filter Absen Tabel
             if (currentTab === "absen-tabel") {
@@ -4501,7 +4702,7 @@
             // Terapkan pengaturan header yang tersimpan
             loadHeaderSettings();
             
-            // PERBAIKAN: Setup navigasi keyboard
+            // PERBAIKAN: Setup navigasi keyboard yang benar
             setupKeyboardNavigation();
         }
 
@@ -4532,82 +4733,6 @@
             });
             
             tbody.innerHTML = tbodyHTML;
-        }
-
-        // PERBAIKAN: Setup navigasi keyboard
-        function setupKeyboardNavigation() {
-            const table = document.querySelector('#entryTable');
-            if (!table) return;
-            
-            // Add event listener for keyboard navigation
-            table.addEventListener('keydown', function(e) {
-                if (!currentFocusedCell) return;
-                
-                const cell = currentFocusedCell;
-                const row = cell.closest('tr');
-                const cells = Array.from(row.querySelectorAll('input.editable-cell'));
-                const cellIndex = cells.indexOf(cell);
-                
-                let targetCell = null;
-                
-                switch(e.key) {
-                    case 'ArrowUp':
-                        e.preventDefault();
-                        const prevRow = row.previousElementSibling;
-                        if (prevRow) {
-                            const prevCells = prevRow.querySelectorAll('input.editable-cell');
-                            if (prevCells[cellIndex]) {
-                                targetCell = prevCells[cellIndex];
-                            }
-                        }
-                        break;
-                    case 'ArrowDown':
-                        e.preventDefault();
-                        const nextRow = row.nextElementSibling;
-                        if (nextRow) {
-                            const nextCells = nextRow.querySelectorAll('input.editable-cell');
-                            if (nextCells[cellIndex]) {
-                                targetCell = nextCells[cellIndex];
-                            }
-                        }
-                        break;
-                    case 'ArrowLeft':
-                        e.preventDefault();
-                        if (cellIndex > 0) {
-                            targetCell = cells[cellIndex - 1];
-                        }
-                        break;
-                    case 'ArrowRight':
-                        e.preventDefault();
-                        if (cellIndex < cells.length - 1) {
-                            targetCell = cells[cellIndex + 1];
-                        }
-                        break;
-                    case 'Tab':
-                        // Allow default tab behavior
-                        break;
-                }
-                
-                if (targetCell) {
-                    targetCell.focus();
-                    targetCell.select();
-                    currentFocusedCell = targetCell;
-                }
-            });
-            
-            // Set focus on cell click
-            table.addEventListener('click', function(e) {
-                if (e.target.classList.contains('editable-cell')) {
-                    currentFocusedCell = e.target;
-                }
-            });
-            
-            // Set focus on cell focus
-            table.addEventListener('focusin', function(e) {
-                if (e.target.classList.contains('editable-cell')) {
-                    currentFocusedCell = e.target;
-                }
-            });
         }
 
         // Fungsi untuk membuat input editable
@@ -4721,6 +4846,29 @@
             const shiftInputs = document.querySelectorAll('.shift-input');
             shiftInputs.forEach(input => {
                 updateShiftColor(input);
+            });
+        }
+
+        // PERBAIKAN: Fungsi untuk logout dengan cleanup listeners
+        function logout() {
+            // Cleanup realtime listeners
+            cleanupRealtimeListeners();
+            
+            auth.signOut().then(() => {
+                currentUser = null;
+                // Reset UI ke state login
+                document.getElementById('loginContainer').style.display = 'flex';
+                document.getElementById('sidebar').style.display = 'none';
+                document.getElementById('userPasswordSection').style.display = 'none';
+                document.getElementById('mainContent').style.display = 'none';
+                document.querySelector('.futuristic-header').style.display = 'none';
+                
+                // Clear form fields
+                document.getElementById('email').value = '';
+                document.getElementById('password').value = '';
+                document.getElementById('loginError').style.display = 'none';
+            }).catch((error) => {
+                console.error('Logout error:', error);
             });
         }
 
@@ -6377,14 +6525,18 @@
             // Logout button
             document.getElementById('logoutBtn').addEventListener('click', logout);
             
-            // Filter button Main folder
-            document.getElementById('applyFilterMain').addEventListener('click', applyDateFilterMain);
+            // PERBAIKAN: Event listeners untuk filter yang memuat ulang data dari Firebase
+            document.getElementById('applyFilterMain').addEventListener('click', async function() {
+                await applyDateFilterMainWithRefresh();
+            });
             
-            // PERBAIKAN: Filter button Overtime & Output
-            document.getElementById('applyFilterOvertimeOutput').addEventListener('click', applyDateFilterOvertimeOutput);
+            document.getElementById('applyFilterOvertimeOutput').addEventListener('click', async function() {
+                await applyDateFilterOvertimeOutputWithRefresh();
+            });
             
-            // PERBAIKAN: Filter button Attendance Table
-            document.getElementById('applyFilterAbsenTabel').addEventListener('click', applyDateFilterAbsenTabel);
+            document.getElementById('applyFilterAbsenTabel').addEventListener('click', async function() {
+                await applyDateFilterAbsenTabelWithRefresh();
+            });
             
             // Header size button
             document.getElementById('applyHeaderSize').addEventListener('click', function() {
