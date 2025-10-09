@@ -3144,7 +3144,7 @@
                             const updateData = {
                                 area: emp.area,
                                 position: emp.position,
-                                shift: shift,
+                                shift: shiftDetails ? shiftDetails.name : existingItem.shift,
                                 shiftCheckIn: shiftDetails ? shiftDetails.checkIn : existingItem.shiftCheckIn,
                                 shiftCheckOut: shiftDetails ? shiftDetails.checkOut : existingItem.shiftCheckOut,
                                 wtNormal: shiftDetails ? shiftDetails.hours : existingItem.wtNormal,
@@ -3164,7 +3164,7 @@
                                 name: emp.name,
                                 position: emp.position,
                                 date: date,
-                                shift: shift,
+                                shift: shiftDetails ? shiftDetails.name : shift,
                                 shiftCheckIn: shiftDetails ? shiftDetails.checkIn : "",
                                 shiftCheckOut: shiftDetails ? shiftDetails.checkOut : "",
                                 wtNormal: shiftDetails ? shiftDetails.hours : "",
@@ -3302,7 +3302,7 @@
         }
 
         // =============================================
-        // PERBAIKAN: FUNGSI UNTUK FILTER DENGAN LOAD DATA DARI FIREBASE
+        // PERBAIKAN: FUNGSI UNTUK FILTER DENGAN LOAD DATA DARI FIRESTORE
         // =============================================
 
         // PERBAIKAN: Fungsi untuk apply filter Main dengan refresh data dari Firebase
