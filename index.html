@@ -3227,11 +3227,12 @@
             });
         }
 
-        // Initialize sidebar
+        // Initialize sidebar - PERBAIKAN: Fungsi yang diperbaiki
         function initSidebar() {
             const sidebar = document.getElementById('sidebar');
             const sidebarToggle = document.getElementById('sidebarToggle');
             
+            // PERBAIKAN: Event listener untuk toggle sidebar
             if (sidebarToggle) {
                 sidebarToggle.addEventListener('click', function() {
                     sidebar.classList.toggle('expanded');
@@ -3241,28 +3242,32 @@
                 });
             }
             
-            // Folder toggle
+            // PERBAIKAN: Folder toggle - perbaikan event listener
             document.querySelectorAll('.sidebar-folder-header').forEach(header => {
                 header.addEventListener('click', function() {
                     this.parentElement.classList.toggle('expanded');
                 });
             });
             
-            // Menu item clicks
+            // PERBAIKAN: Menu item clicks - perbaikan event listener
             document.querySelectorAll('.sidebar-menu a[data-tab]').forEach(item => {
                 item.addEventListener('click', function(e) {
                     e.preventDefault();
                     
+                    // Remove active class from all menu items
                     document.querySelectorAll('.sidebar-menu a').forEach(i => i.classList.remove('active'));
+                    // Add active class to clicked item
                     this.classList.add('active');
                     
                     const tabName = this.getAttribute('data-tab');
                     currentTab = tabName;
                     
+                    // Hide all tab panes
                     document.querySelectorAll('.tab-pane').forEach(tab => {
                         tab.classList.remove('show', 'active');
                     });
                     
+                    // Show selected tab pane
                     const targetTab = document.getElementById(tabName);
                     if (targetTab) {
                         targetTab.classList.add('show', 'active');
@@ -3288,9 +3293,15 @@
                     }
                 });
             });
+            
+            // PERBAIKAN: Logout button event listener
+            document.getElementById('logoutBtn').addEventListener('click', function(e) {
+                e.preventDefault();
+                logout();
+            });
         }
 
-        // Initialize mobile menu
+        // Initialize mobile menu - PERBAIKAN: Fungsi yang diperbaiki
         function initMobileMenu() {
             const mobileMenuToggle = document.getElementById('mobileMenuToggle');
             const sidebar = document.getElementById('sidebar');
@@ -3308,6 +3319,7 @@
                 });
             }
             
+            // PERBAIKAN: Close sidebar when menu item is clicked on mobile
             document.querySelectorAll('.sidebar-menu a').forEach(item => {
                 item.addEventListener('click', function() {
                     if (window.innerWidth < 992) {
@@ -3488,7 +3500,7 @@
         }
 
         // =============================================
-        // EVENT LISTENERS
+        // EVENT LISTENERS - PERBAIKAN: Event listeners yang diperbaiki
         // =============================================
 
         // Event listener untuk login
@@ -3498,8 +3510,7 @@
             login(email, password);
         });
 
-        // Event listener untuk logout
-        document.getElementById('logoutBtn').addEventListener('click', logout);
+        // Event listener untuk logout - PERBAIKAN: Sudah dipindah ke initSidebar
 
         // Event listener untuk save data
         document.getElementById('saveData').addEventListener('click', saveAttendanceData);
@@ -3532,6 +3543,23 @@
             modal.show();
         });
 
+        // PERBAIKAN: Event listener untuk apply header size
+        document.getElementById('applyHeaderSize').addEventListener('click', function() {
+            const width = document.getElementById('headerWidth').value;
+            const height = document.getElementById('headerHeight').value;
+            
+            if (width) {
+                localStorage.setItem('headerWidth', width);
+            }
+            
+            if (height) {
+                localStorage.setItem('headerHeight', height);
+            }
+            
+            loadHeaderSettings();
+            showNotification('Header size applied successfully', 'success');
+        });
+
         // Initialize connection status
         checkConnection();
 
@@ -3558,7 +3586,7 @@
             }
         });
 
-        console.log('Attendance System Initialized with Improved Period Management');
+        console.log('Attendance System Initialized with Improved Sidebar and Menu Functionality');
     </script>
 </body>
 </html>
