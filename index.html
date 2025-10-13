@@ -114,6 +114,7 @@
             position: fixed;
             height: 100vh;
             overflow-y: auto;
+            z-index: 100;
         }
         
         .sidebar-header {
@@ -178,13 +179,13 @@
         .user-info {
             display: flex;
             align-items: center;
+            gap: 15px;
         }
         
         .user-info img {
             width: 40px;
             height: 40px;
             border-radius: 50%;
-            margin-right: 10px;
         }
         
         .content {
@@ -299,6 +300,14 @@
         
         .btn-warning:hover {
             background: #d68910;
+        }
+        
+        .btn-secondary {
+            background: #6c757d;
+        }
+        
+        .btn-secondary:hover {
+            background: #5a6268;
         }
         
         .form-row {
@@ -529,6 +538,11 @@
             .filter-container .form-group {
                 flex: 1 0 100%;
             }
+            
+            .modal-content {
+                width: 95%;
+                margin: 20px auto;
+            }
         }
     </style>
 </head>
@@ -751,7 +765,7 @@
                 
                 adminMenuItems.forEach(item => {
                     const li = document.createElement('li');
-                    li.innerHTML = `<a href="#" onclick="${item.action}"><i class="fas ${item.icon}"></i> ${item.text}</a>`;
+                    li.innerHTML = `<a href="#" onclick="${item.action}(); return false;"><i class="fas ${item.icon}"></i> ${item.text}</a>`;
                     sidebarMenu.appendChild(li);
                 });
             } else {
@@ -764,7 +778,7 @@
                 
                 userMenuItems.forEach(item => {
                     const li = document.createElement('li');
-                    li.innerHTML = `<a href="#" onclick="${item.action}"><i class="fas ${item.icon}"></i> ${item.text}</a>`;
+                    li.innerHTML = `<a href="#" onclick="${item.action}(); return false;"><i class="fas ${item.icon}"></i> ${item.text}</a>`;
                     sidebarMenu.appendChild(li);
                 });
             }
@@ -886,7 +900,7 @@
             return dates;
         }
 
-        // Input Attendance Page - MODIFIED
+        // Input Attendance Page
         function showInputAttendance() {
             pageTitle.textContent = 'Input Absen Tabel';
             
@@ -956,7 +970,7 @@
             loadAttendanceTable(startDate, endDate);
         }
 
-        // Load attendance table with date columns - MODIFIED
+        // Load attendance table with date columns
         function loadAttendanceTable(startDate, endDate) {
             const tableBody = document.getElementById('attendanceTableBody');
             const tableHead = document.querySelector('#attendanceTableBody').previousElementSibling;
@@ -1119,7 +1133,7 @@
             });
         }
 
-        // Apply date filter - NEW
+        // Apply date filter
         function applyDateFilter() {
             const startDate = document.getElementById('filterStartDate').value;
             const endDate = document.getElementById('filterEndDate').value;
@@ -1138,7 +1152,7 @@
             showToast('Date filter applied', 'success');
         }
 
-        // Refresh attendance table - NEW
+        // Refresh attendance table
         function refreshAttendanceTable() {
             const startDate = document.getElementById('filterStartDate').value;
             const endDate = document.getElementById('filterEndDate').value;
@@ -1151,7 +1165,7 @@
             }
         }
 
-        // Add attendance row - MODIFIED
+        // Add attendance row
         function addAttendanceRow() {
             // Get employees who are not admins
             const nonAdminEmployees = employees.filter(emp => !emp.isAdmin);
@@ -1224,7 +1238,7 @@
             showModal('Add New Attendance', modalContent);
         }
 
-        // Add new attendance - MODIFIED
+        // Add new attendance
         function addNewAttendance() {
             const employeeId = parseInt(document.getElementById('employeeSelect').value);
             const shiftCode = document.getElementById('shiftCode').value;
@@ -1300,7 +1314,7 @@
             showToast('Attendance added successfully', 'success');
         }
 
-        // Edit employee attendance - NEW
+        // Edit employee attendance
         function editEmployeeAttendance(employeeId) {
             const employee = employees.find(emp => emp.id === employeeId);
             
@@ -1369,7 +1383,7 @@
             showModal('Edit Attendance', modalContent);
         }
 
-        // Update employee attendance - NEW
+        // Update employee attendance
         function updateEmployeeAttendance(employeeId) {
             // Get date range
             const startDate = document.getElementById('filterStartDate').value;
@@ -1406,7 +1420,7 @@
             showToast('Attendance updated successfully', 'success');
         }
 
-        // Delete employee attendance - NEW
+        // Delete employee attendance
         function deleteEmployeeAttendance(employeeId) {
             if (!confirm('Are you sure you want to delete all attendance for this employee in the selected date range?')) {
                 return;
@@ -1442,7 +1456,7 @@
             showToast('Attendance deleted successfully', 'success');
         }
 
-        // Save attendance - MODIFIED
+        // Save attendance
         function saveAttendance() {
             // Get date range
             const startDate = document.getElementById('filterStartDate').value;
