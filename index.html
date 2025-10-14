@@ -3070,12 +3070,19 @@
                             
                             // Auto-pindah ke cell berikutnya setelah input selesai
                             setTimeout(() => {
-                                const event = new KeyboardEvent('keydown', {
-                                    key: 'ArrowRight',
-                                    bubbles: true
-                                });
-                                input.dispatchEvent(event);
-                            }, 50);
+                                const cell = input.closest('td');
+                                const row = cell.closest('tr');
+                                const allCells = Array.from(row.querySelectorAll('.shift-input'));
+                                const cellIndex = allCells.indexOf(input);
+
+                                // Pindah langsung ke sel kanan tanpa trigger event lain
+                                if (cellIndex < allCells.length - 1) {
+                                    const nextCell = allCells[cellIndex + 1];
+                                    nextCell.focus();
+                                    nextCell.select();
+                                }
+                            }, 80);
+
                         } else if (value.length >= 2) {
                             // Reset jika input tidak valid
                             input.value = '';
@@ -6282,6 +6289,9 @@
             });
             
             console.log('Attendance System initialized with improvements');
+            document.addEventListener('DOMContentLoaded', function() {
+                setupKeyboardNavigation();
+                setupShiftInputHandling();
         });
     </script>
 </body>
