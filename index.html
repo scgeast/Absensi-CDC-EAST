@@ -5221,7 +5221,7 @@
                 }
             });
             
-            // Update total overtime untuk admin
+            // PERBAIKAN: Update total overtime untuk admin
             updateAdminTotalOvertime(filteredData);
         }
 
@@ -5621,7 +5621,7 @@
             }
         }
 
-        // PERBAIKAN: Fungsi untuk delete overtime detail
+        // PERBAIKAN: Fungsi untuk delete overtime detail dengan update total overtime
         async function deleteOvertimeDetail(overtimeId) {
             if (!confirm('Are you sure you want to delete this overtime record?')) {
                 return;
@@ -5644,10 +5644,13 @@
                     await removeOvertimeCalculationData(overtimeRecord);
                 }
                 
+                // PERBAIKAN: Update total overtime setelah delete
+                updateTotalOvertime();
+                updateAdminTotalOvertime();
+                
                 // Update tampilan
                 updateOvertimeDetailTable();
                 updateAdminOvertimeDetailTable();
-                updateTotalOvertime();
                 
                 showNotification('Overtime record deleted successfully', 'success');
                 
