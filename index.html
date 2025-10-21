@@ -1561,6 +1561,7 @@
     </style>
 </head>
 <body>
+    
     <!-- Mobile Menu Toggle -->
     <button class="mobile-menu-toggle" id="mobileMenuToggle">
         <i class="fas fa-bars"></i>
@@ -3085,82 +3086,187 @@
                 
                 // Re-authenticate user
                 const user = auth.currentUser;
-                const credential = firebase.auth.EmailAuthProvider.credential(user.email, currentPassword);
+                const email = user.email;
+                
+                // Re-authenticate user dengan credential yang benar
+                const credential = firebase.auth.EmailAuthProvider.credential(
+                    email, 
+                    currentPassword
+                );
                 
                 await user.reauthenticateWithCredential(credential);
                 
-        // Update password// PERBAIKAN: Fungsi untuk change password - DIPERBAKI DENGAN AUTHENTICATION YANG BENAR
-    async function changeUserPassword() {
-        const currentPassword = document.getElementById('userCurrentPassword').value;
-        const newPassword = document.getElementById('userNewPassword').value;
-        const confirmPassword = document.getElementById('userConfirmPassword').value;
-    
-        if (!currentPassword || !newPassword || !confirmPassword) {
-            showNotification('Please fill all password fields', 'error');
-            return;
-        }
-    
-        if (newPassword !== confirmPassword) {
-            showNotification('New password and confirm password do not match', 'error');
-            return;
-        }
-    
-        if (newPassword.length < 6) {
-            showNotification('New password must be at least 6 characters', 'error');
-            return;
-        }
-    
-        try {
-            showLoading(true);
-        
-            // PERBAIKAN: Re-authenticate user dengan cara yang benar
-            const user = auth.currentUser;
-            const email = user.email;
-        
-            // Re-authenticate user dengan credential yang benar
-            const credential = firebase.auth.EmailAuthProvider.credential(
-                email, 
-                currentPassword
-            );
-        
-            await user.reauthenticateWithCredential(credential);
-        
-            // Update password di Firebase Authentication
-            await user.updatePassword(newPassword);
-        
-            // PERBAIKAN: Update password di Firestore juga
-            await db.collection('users').doc(user.uid).update({
-                password: newPassword,
-                passwordUpdatedAt: firebase.firestore.FieldValue.serverTimestamp()
-            });
-        
-            showNotification('Password changed successfully and updated in user management', 'success');
-        
-            // Close modal
-            const modal = bootstrap.Modal.getInstance(document.getElementById('changePasswordModal'));
+                // Update password di Firebase Authentication
+                await user.updatePassword(newPassword);
+                
+                // PERBAIKAN: Update password di Firestore juga
+                await db.collection('users').doc(user.uid).update({
+                    password: newPassword,
+                    passwordUpdatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                
+                showNotification('Password changed successfully and updated in user management', 'success');
+                
+                // Close modal
+                const modal = bootstrap.Modal.getInstance(document.getElementById('changePasswordModal'));
                 modal.hide();
-        
-            // Reset form
-            document.getElementById('userCurrentPassword').value = '';
-            document.getElementById('userNewPassword').value = '';
-            document.getElementById('userConfirmPassword').value = '';
-        
-            // PERBAIKAN: Reload user data untuk update tampilan
-            await loadUsers();
-        
-        } catch (error) {
-            console.error('Error changing password:', error);
-            if (error.code === 'auth/wrong-password') {
-                showNotification('Current password is incorrect', 'error');
-            } else if (error.code === 'auth/requires-recent-login') {
-                showNotification('Please log in again to change your password', 'error');
-            } else {
-                showNotification('Error changing password: ' + error.message, 'error');
+                
+                // Reset form
+                document.getElementById('userCurrentPassword').value = '';
+                document.getElementById('userNewPassword').value = '';
+                document.getElementById('userConfirmPassword').value = '';
+                
+                // PERBAIKAN: Reload user data untuk update tampilan
+                await loadUsers();
+                
+            } catch (error) {
+                console.error('Error changing password:', error);
+                if (error.code === 'auth/wrong-password') {
+                    showNotification('Current password is incorrect', 'error');
+                } else if (error.code === 'auth/requires-recent-login') {
+                    showNotification('Please log in again to change your password', 'error');
+                } else {
+                    showNotification('Error changing password: ' + error.message, 'error');
+                }
+            } finally {
+                showLoading(false);
             }
-        } finally {
-            showLoading(false);
         }
-    }}
+
+        // =============================================
+        // PERBAIKAN 4: FIX USER MANAGEMENT FUNCTIONS
+        // =============================================
+
+        // PERBAIKAN: Fungsi untuk membuat user baru dengan password management yang benar
+        async function createNewUser() {
+            const email = document.getElementById('newUserEmail').value;
+            const password = document.getElementById('newUserPassword').value;
+            const name = document.getElementById('newUserName').value;
+            const position = document.getElementById('newUserPosition').value;
+            const role = document.getElementById('newUserRole').value;
+            
+            if (!email || !password) {
+                showNotification('Email and password must be filled', 'error');
+                return;
+            }
+            
+            if (password.length < 6) {
+                showNotification('Password must be at least 6 characters', 'error');
+                return;
+            }
+            
+            try {
+                showLoading(true);
+                
+                // Create user in Firebase Auth
+                const userCredential = await auth.createUserWithEmailAndPassword(email, password);
+                const userId = userCredential.user.uid;
+                
+                // Save user data to Firestore dengan password
+                await db.collection('users').doc(userId).set({
+                    email: email,
+                    name: name,
+                    position: position,
+                    role: role,
+                    password: password,
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                
+                // Close modal
+                const modal = bootstrap.Modal.getInstance(document.getElementById('addUserModal'));
+                modal.hide();
+                
+                // Clear form
+                document.getElementById('newUserEmail').value = '';
+                document.getElementById('newUserPassword').value = '';
+                document.getElementById('newUserName').value = '';
+                document.getElementById('newUserPosition').value = '';
+                document.getElementById('newUserRole').value = 'user';
+                
+                // Reload user data
+                await loadUsers();
+                
+                showNotification('User created successfully', 'success');
+                
+            } catch (error) {
+                console.error('Error creating user:', error);
+                
+                if (error.code === 'auth/email-already-in-use') {
+                    showNotification('Email is already in use', 'error');
+                } else if (error.code === 'auth/invalid-email') {
+                    showNotification('Invalid email address', 'error');
+                } else if (error.code === 'auth/operation-not-allowed') {
+                    showNotification('Email/password accounts are not enabled', 'error');
+                } else if (error.code === 'auth/weak-password') {
+                    showNotification('Password is too weak', 'error');
+                } else {
+                    showNotification('Error creating user: ' + error.message, 'error');
+                }
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        // PERBAIKAN: Fungsi untuk mengupdate user dengan password management yang benar
+        async function updateUser() {
+            const userId = document.getElementById('editUserId').value;
+            const email = document.getElementById('editUserEmail').value;
+            const role = document.getElementById('editUserRole').value;
+            const name = document.getElementById('editUserName').value;
+            const position = document.getElementById('editUserPosition').value;
+            const newPassword = document.getElementById('editUserPassword').value;
+            
+            if (!email || !role) {
+                showNotification('Email and role must be filled', 'error');
+                return;
+            }
+            
+            try {
+                showLoading(true);
+                
+                // Data update dasar
+                const updateData = {
+                    email,
+                    role,
+                    name,
+                    position,
+                    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                };
+                
+                // PERBAIKAN: Jika ada password baru, update di Firestore
+                if (newPassword) {
+                    if (newPassword.length < 6) {
+                        showNotification('New password must be at least 6 characters', 'error');
+                        return;
+                    }
+                    
+                    updateData.password = newPassword;
+                    updateData.passwordUpdatedAt = firebase.firestore.FieldValue.serverTimestamp();
+                }
+                
+                // Update data di Firestore
+                await db.collection('users').doc(userId).update(updateData);
+                
+                if (newPassword) {
+                    showNotification('User data and password updated successfully in user management', 'success');
+                } else {
+                    showNotification('User data updated successfully', 'success');
+                }
+                
+                // Close modal
+                const modal = bootstrap.Modal.getInstance(document.getElementById('editUserModal'));
+                modal.hide();
+                
+                // Reload user data
+                await loadUsers();
+                
+            } catch (error) {
+                console.error('Error updating user:', error);
+                showNotification('Error updating user: ' + error.message, 'error');
+            } finally {
+                showLoading(false);
+            }
+        }
 
         // =============================================
         // FUNGSI-FUNGSI LAIN YANG SUDAH ADA (TETAP SAMA)
@@ -6637,67 +6743,6 @@
             modal.show();
         }
 
-        // Fungsi untuk mengupdate user// PERBAIKAN: Fungsi untuk mengupdate user dengan password management yang benar
-    async function updateUser() {
-        const userId = document.getElementById('editUserId').value;
-        const email = document.getElementById('editUserEmail').value;
-        const role = document.getElementById('editUserRole').value;
-        const name = document.getElementById('editUserName').value;
-        const position = document.getElementById('editUserPosition').value;
-        const newPassword = document.getElementById('editUserPassword').value;
-    
-        if (!email || !role) {
-            showNotification('Email and role must be filled', 'error');
-            return;
-        }
-    
-        try {
-            showLoading(true);
-        
-            // Data update dasar
-            const updateData = {
-                email,
-                role,
-                name,
-                position,
-                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-            };
-        
-            // PERBAIKAN: Jika ada password baru, update di Firestore
-            if (newPassword) {
-                if (newPassword.length < 6) {
-                    showNotification('New password must be at least 6 characters', 'error');
-                    return;
-                }
-            
-                updateData.password = newPassword;
-                updateData.passwordUpdatedAt = firebase.firestore.FieldValue.serverTimestamp();
-            }
-        
-            // Update data di Firestore
-            await db.collection('users').doc(userId).update(updateData);
-        
-            if (newPassword) {
-                showNotification('User data and password updated successfully in user management', 'success');
-            } else {
-                showNotification('User data updated successfully', 'success');
-            }
-        
-            // Close modal
-            const modal = bootstrap.Modal.getInstance(document.getElementById('editUserModal'));
-            modal.hide();
-        
-            // Reload user data
-            await loadUsers();
-        
-        } catch (error) {
-            console.error('Error updating user:', error);
-            showNotification('Error updating user: ' + error.message, 'error');
-        } finally {
-            showLoading(false);
-        }
-    }}
-
         // Fungsi untuk menghapus user
         async function deleteUser(userId) {
             if (!confirm('Are you sure you want to delete this user?')) {
@@ -6747,27 +6792,6 @@
                 showNotification('Error loading users: ' + error.message, 'error');
             }
         }
-
-        // =============================================
-        // PERBAIKAN CHANGE PASSWORD
-        // =============================================
-
-         // PERBAIKAN: Setup user management dengan handler yang diperbaiki
-        document.getElementById('saveUserBtn').addEventListener('click', createNewUser);
-    
-        document.getElementById('updateUserBtn').addEventListener('click', updateUser);
-    
-        // PERBAIKAN: Setup change password dengan handler yang diperbaiki
-        document.getElementById('changePasswordSidebarBtn').addEventListener('click', function() {
-            document.getElementById('userCurrentPassword').value = '';
-            document.getElementById('userNewPassword').value = '';
-            document.getElementById('userConfirmPassword').value = '';
-        
-            const modal = new bootstrap.Modal(document.getElementById('changePasswordModal'));
-            modal.show();
-        });
-    
-        document.getElementById('userChangePasswordBtn').addEventListener('click', changeUserPassword);
 
         // =============================================
         // PERBAIKAN: INISIALISASI TAMBAHAN
@@ -6894,80 +6918,20 @@
             
             document.getElementById('saveCuti').addEventListener('click', saveCutiDataToFirestore);
             
-            // PERBAIKAN: Fungsi untuk membuat user baru dengan password management yang benar
-    async function createNewUser() {
-        const email = document.getElementById('newUserEmail').value;
-        const password = document.getElementById('newUserPassword').value;
-        const name = document.getElementById('newUserName').value;
-        const position = document.getElementById('newUserPosition').value;
-        const role = document.getElementById('newUserRole').value;
-    
-        if (!email || !password) {
-            showNotification('Email and password must be filled', 'error');
-            return;
-        }
-    
-        if (password.length < 6) {
-            showNotification('Password must be at least 6 characters', 'error');
-            return;
-        }
-    
-        try {
-            showLoading(true);
-        
-            // Create user in Firebase Auth
-            const userCredential = await auth.createUserWithEmailAndPassword(email, password);
-            const userId = userCredential.user.uid;
-        
-            // Save user data to Firestore dengan password
-            await db.collection('users').doc(userId).set({
-                email: email,
-                name: name,
-                position: position,
-                role: role,
-                password: password,
-                createdAt: firebase.firestore.FieldValue.serverTimestamp()
-            });
-        
-            // Close modal
-            const modal = bootstrap.Modal.getInstance(document.getElementById('addUserModal'));
-            modal.hide();
-        
-            // Clear form
-            document.getElementById('newUserEmail').value = '';
-            document.getElementById('newUserPassword').value = '';
-            document.getElementById('newUserName').value = '';
-            document.getElementById('newUserPosition').value = '';
-            document.getElementById('newUserRole').value = 'user';
-        
-            // Reload user data
-            await loadUsers();
-        
-            showNotification('User created successfully', 'success');
-        
-        } catch (error) {
-            console.error('Error creating user:', error);
-        
-            if (error.code === 'auth/email-already-in-use') {
-                showNotification('Email is already in use', 'error');
-            } else if (error.code === 'auth/invalid-email') {
-                showNotification('Invalid email address', 'error');
-            } else if (error.code === 'auth/operation-not-allowed') {
-                showNotification('Email/password accounts are not enabled', 'error');
-            } else if (error.code === 'auth/weak-password') {
-                showNotification('Password is too weak', 'error');
-            } else {
-                showNotification('Error creating user: ' + error.message, 'error');
-            }
-        } finally {
-            showLoading(false);
-        }
-    }
-            
+            // PERBAIKAN: Setup user management dengan handler yang diperbaiki
+            document.getElementById('saveUserBtn').addEventListener('click', createNewUser);
             document.getElementById('updateUserBtn').addEventListener('click', updateUser);
             
             // PERBAIKAN: Setup change password dengan handler yang diperbaiki
-            initChangePasswordSidebar();
+            document.getElementById('changePasswordSidebarBtn').addEventListener('click', function() {
+                document.getElementById('userCurrentPassword').value = '';
+                document.getElementById('userNewPassword').value = '';
+                document.getElementById('userConfirmPassword').value = '';
+                
+                const modal = new bootstrap.Modal(document.getElementById('changePasswordModal'));
+                modal.show();
+            });
+            
             document.getElementById('userChangePasswordBtn').addEventListener('click', changeUserPassword);
             
             // PERBAIKAN: Setup update overtime detail
@@ -7013,6 +6977,3 @@
     </script>
 </body>
 </html>
-
-
-    
