@@ -1558,6 +1558,22 @@
         .btn-delete-overtime:hover {
             background-color: #c82333;
         }
+        
+        /* PERBAIKAN: Password visibility toggle */
+        .password-toggle {
+            cursor: pointer;
+            color: var(--accent-color);
+            margin-left: 5px;
+        }
+        
+        .password-toggle:hover {
+            color: var(--primary-color);
+        }
+        
+        .password-field {
+            display: flex;
+            align-items: center;
+        }
     </style>
 </head>
 <body>
@@ -2673,394 +2689,10 @@
         let unsubscribeListeners = [];
 
         // =============================================
-        // PERBAIKAN SISTEM NAVIGASI KEYBOARD YANG LEBIH BAIK
+        // PERBAIKAN SISTEM PASSWORD MANAGEMENT YANG LEBIH BAIK
         // =============================================
 
-        // PERBAIKAN: Setup navigasi keyboard yang lebih stabil
-        function setupKeyboardNavigation() {
-            const table = document.querySelector('#entryTable');
-            if (!table) return;
-            
-            // Remove existing event listeners to prevent duplicates
-            table.removeEventListener('keydown', handleTableKeydown);
-            table.removeEventListener('click', handleTableClick);
-            table.removeEventListener('focusin', handleTableFocus);
-            
-            // Add new event listeners
-            table.addEventListener('keydown', handleTableKeydown);
-            table.addEventListener('click', handleTableClick);
-            table.addEventListener('focusin', handleTableFocus);
-        }
-
-        // PERBAIKAN: Fungsi untuk menangani keyboard navigation
-        function handleTableKeydown(e) {
-            // Hanya tangani tombol panah dan Tab
-            if (!['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Tab', 'Enter'].includes(e.key)) {
-                return;
-            }
-            
-            const activeElement = document.activeElement;
-            
-            // Pastikan elemen yang aktif adalah input shift
-            if (!activeElement || !activeElement.classList.contains('shift-input')) {
-                return;
-            }
-            
-            e.preventDefault();
-            
-            const cell = activeElement;
-            const row = cell.closest('tr');
-            const allCells = Array.from(row.querySelectorAll('.shift-input'));
-            const cellIndex = allCells.indexOf(cell);
-            
-            let targetCell = null;
-            
-            switch(e.key) {
-                case 'ArrowUp':
-                    const prevRow = row.previousElementSibling;
-                    if (prevRow) {
-                        const prevCells = prevRow.querySelectorAll('.shift-input');
-                        if (prevCells[cellIndex]) {
-                            targetCell = prevCells[cellIndex];
-                        }
-                    }
-                    break;
-                    
-                case 'ArrowDown':
-                case 'Enter': // Enter juga pindah ke bawah
-                    const nextRow = row.nextElementSibling;
-                    if (nextRow) {
-                        const nextCells = nextRow.querySelectorAll('.shift-input');
-                        if (nextCells[cellIndex]) {
-                            targetCell = nextCells[cellIndex];
-                        }
-                    }
-                    break;
-                    
-                case 'ArrowLeft':
-                    if (cellIndex > 0) {
-                        targetCell = allCells[cellIndex - 1];
-                    }
-                    break;
-                    
-                case 'ArrowRight':
-                    if (cellIndex < allCells.length - 1) {
-                        targetCell = allCells[cellIndex + 1];
-                    }
-                    break;
-                    
-                case 'Tab':
-                    if (e.shiftKey) {
-                        // Shift+Tab - move left
-                        if (cellIndex > 0) {
-                            targetCell = allCells[cellIndex - 1];
-                        } else {
-                            // Pindah ke baris sebelumnya jika di sel pertama
-                            const prevRow = row.previousElementSibling;
-                            if (prevRow) {
-                                const prevCells = prevRow.querySelectorAll('.shift-input');
-                                if (prevCells.length > 0) {
-                                    targetCell = prevCells[prevCells.length - 1];
-                                }
-                            }
-                        }
-                    } else {
-                        // Tab - move right
-                        if (cellIndex < allCells.length - 1) {
-                            targetCell = allCells[cellIndex + 1];
-                        } else {
-                            // Pindah ke baris berikutnya jika di sel terakhir
-                            const nextRow = row.nextElementSibling;
-                            if (nextRow) {
-                                const nextCells = nextRow.querySelectorAll('.shift-input');
-                                if (nextCells.length > 0) {
-                                    targetCell = nextCells[0];
-                                }
-                            }
-                        }
-                    }
-                    break;
-            }
-            
-            if (targetCell) {
-                targetCell.focus();
-                targetCell.select();
-                currentFocusedCell = targetCell;
-            }
-        }
-
-        // PERBAIKAN: Fungsi untuk menangani klik pada tabel
-        function handleTableClick(e) {
-            if (e.target.classList.contains('shift-input')) {
-                currentFocusedCell = e.target;
-                e.target.select(); // Auto-select text saat diklik
-            }
-        }
-
-        // PERBAIKAN: Fungsi untuk menangani fokus pada tabel
-        function handleTableFocus(e) {
-            if (e.target.classList.contains('shift-input')) {
-                currentFocusedCell = e.target;
-                
-                // Auto-select text saat cell mendapatkan fokus (dengan delay kecil)
-                setTimeout(() => {
-                    if (document.activeElement === e.target) {
-                        e.target.select();
-                    }
-                }, 10);
-            }
-        }
-
-        // PERBAIKAN: Fungsi untuk menangani input shift dengan navigasi yang lebih baik
-        function setupShiftInputHandling() {
-            const table = document.querySelector('#entryTable');
-            if (!table) return;
-            
-            // Remove existing event listener to prevent duplicates
-            table.removeEventListener('input', handleShiftInput);
-            
-            // Add new event listener
-            table.addEventListener('input', handleShiftInput);
-        }
-
-        // PERBAIKAN: Fungsi untuk menangani input shift
-        function handleShiftInput(e) {
-            if (e.target.classList.contains('shift-input')) {
-                const input = e.target;
-                const value = input.value.toUpperCase();
-                
-                // Auto-format untuk shift codes
-                if (value.length > 0) {
-                    // Validasi kode shift yang diizinkan
-                    const validShifts = ['1', '2', '3', '11', '22', 'C', 'O'];
-                    if (validShifts.includes(value)) {
-                        input.value = value;
-                        updateShiftColor(input);
-                        
-                        // Auto-pindah ke cell berikutnya setelah input valid (dengan delay)
-                        setTimeout(() => {
-                            if (input.nextElementSibling && input.nextElementSibling.classList.contains('shift-input')) {
-                                input.nextElementSibling.focus();
-                                input.nextElementSibling.select();
-                            }
-                        }, 100); // Delay sedikit lebih lama untuk stabilitas
-                    } else if (value.length >= 2) {
-                        // Reset jika input tidak valid
-                        input.value = '';
-                    }
-                }
-            }
-        }
-
-        // =============================================
-        // PERBAIKAN 1: ATTENDANCE SUMMARY HANYA MENGHITUNG DATA SESUAI FILTER TANGGAL
-        // =============================================
-
-        // PERBAIKAN: Function to generate attendance summary data dengan filter tanggal
-        function generateAttendanceSummary() {
-            const summaryData = {};
-            
-            // PERBAIKAN 1: Dapatkan filter tanggal dari Attendance Table
-            const startDateAbsenTabel = document.getElementById('startDateAbsenTabel').valueAsDate;
-            const endDateAbsenTabel = document.getElementById('endDateAbsenTabel').valueAsDate;
-            
-            // Process each employee in absenTabelData
-            absenTabelData.forEach(employee => {
-                if (!employee.name) return;
-                
-                // Initialize employee summary if not exists
-                if (!summaryData[employee.name]) {
-                    summaryData[employee.name] = {
-                        name: employee.name,
-                        off: 0,
-                        morning: 0,
-                        afternoon: 0,
-                        night: 0,
-                        morningPart: 0,
-                        afternoonPart: 0,
-                        leave: 0,
-                        totalAttendance: 0,
-                        totalWorkDay: 0
-                    };
-                }
-                
-                // Count shifts for this employee - PERBAIKAN 1: Hanya hitung yang sesuai filter tanggal
-                if (employee.shifts) {
-                    Object.entries(employee.shifts).forEach(([dateStr, shiftCode]) => {
-                        // PERBAIKAN 1: Filter berdasarkan tanggal
-                        const shiftDate = parseDateFromString(dateStr);
-                        if (startDateAbsenTabel && endDateAbsenTabel) {
-                            if (shiftDate < startDateAbsenTabel || shiftDate > endDateAbsenTabel) {
-                                return; // Skip jika tanggal tidak dalam range filter
-                            }
-                        }
-                        
-                        const shift = shiftCode.toUpperCase();
-                        
-                        switch(shift) {
-                            case 'O':
-                                summaryData[employee.name].off++;
-                                summaryData[employee.name].totalWorkDay++; // O dihitung sebagai hari
-                                break;
-                            case '1':
-                                summaryData[employee.name].morning++;
-                                summaryData[employee.name].totalWorkDay++;
-                                summaryData[employee.name].totalAttendance++;
-                                break;
-                            case '2':
-                                summaryData[employee.name].afternoon++;
-                                summaryData[employee.name].totalWorkDay++;
-                                summaryData[employee.name].totalAttendance++;
-                                break;
-                            case '3':
-                                summaryData[employee.name].night++;
-                                summaryData[employee.name].totalWorkDay++;
-                                summaryData[employee.name].totalAttendance++;
-                                break;
-                            case '11':
-                                summaryData[employee.name].morningPart++;
-                                summaryData[employee.name].totalWorkDay++;
-                                summaryData[employee.name].totalAttendance++;
-                                break;
-                            case '22':
-                                summaryData[employee.name].afternoonPart++;
-                                summaryData[employee.name].totalWorkDay++;
-                                summaryData[employee.name].totalAttendance++;
-                                break;
-                            case 'C':
-                                summaryData[employee.name].leave++;
-                                summaryData[employee.name].totalWorkDay++; // Cuti dihitung sebagai hari
-                                break;
-                            default:
-                                // Untuk shift yang tidak dikenal, tidak dihitung
-                                break;
-                        }
-                    });
-                }
-            });
-            
-            return Object.values(summaryData);
-        }
-
-        // PERBAIKAN: Function untuk validasi dan koreksi data attendance summary
-        function validateAttendanceSummary() {
-            const summaryData = generateAttendanceSummary();
-            
-            summaryData.forEach(employee => {
-                console.log(`Validasi data untuk ${employee.name}:`, {
-                    totalWorkDay: employee.totalWorkDay,
-                    totalAttendance: employee.totalAttendance,
-                    sumShifts: employee.off + employee.morning + employee.afternoon + 
-                              employee.night + employee.morningPart + employee.afternoonPart + employee.leave
-                });
-                
-                // Validasi: totalWorkDay harus sama dengan jumlah semua shift
-                const calculatedTotal = employee.off + employee.morning + employee.afternoon + 
-                                      employee.night + employee.morningPart + employee.afternoonPart + employee.leave;
-                
-                if (employee.totalWorkDay !== calculatedTotal) {
-                    console.warn(`Data tidak konsisten untuk ${employee.name}: totalWorkDay=${employee.totalWorkDay}, calculated=${calculatedTotal}`);
-                    // Koreksi otomatis
-                    employee.totalWorkDay = calculatedTotal;
-                }
-                
-                // Validasi: totalAttendance harus <= totalWorkDay
-                if (employee.totalAttendance > employee.totalWorkDay) {
-                    console.warn(`Total attendance melebihi total work day untuk ${employee.name}`);
-                    employee.totalAttendance = employee.totalWorkDay;
-                }
-            });
-            
-            return summaryData;
-        }
-
-        // PERBAIKAN: Function to update attendance summary table dengan validasi
-        function updateAttendanceSummaryTable() {
-            const tbody = document.getElementById('attendanceSummaryTableBody');
-            tbody.innerHTML = '';
-            
-            // Gunakan fungsi validasi
-            const summaryData = validateAttendanceSummary();
-            
-            if (summaryData.length === 0) {
-                const row = document.createElement('tr');
-                row.innerHTML = `<td colspan="11" class="text-center">No attendance data available for selected date range</td>`;
-                tbody.appendChild(row);
-                return;
-            }
-            
-            // Sort employees by default order
-            const sortedData = sortEmployeesByDefaultOrder(summaryData);
-            
-            sortedData.forEach((employee, index) => {
-                const row = document.createElement('tr');
-                row.innerHTML = `
-                    <td>${index + 1}</td>
-                    <td>${employee.name}</td>
-                    <td>${employee.off}</td>
-                    <td>${employee.morning}</td>
-                    <td>${employee.afternoon}</td>
-                    <td>${employee.night}</td>
-                    <td>${employee.morningPart}</td>
-                    <td>${employee.afternoonPart}</td>
-                    <td>${employee.leave}</td>
-                    <td>${employee.totalAttendance}</td>
-                    <td>${employee.totalWorkDay}</td>
-                `;
-                tbody.appendChild(row);
-            });
-        }
-
-        // =============================================
-        // PERBAIKAN 2: HILANGKAN FUNGSI DELETE PADA VIEW USER DI SUMMARY LEAVE
-        // =============================================
-
-        // PERBAIKAN: Fungsi untuk melihat detail leave - HILANGKAN TOMBOL DELETE UNTUK USER
-        function viewLeaveDetails(employeeName) {
-            // Filter cuti data berdasarkan employeeName
-            const employeeLeaves = cutiData.filter(cuti => cuti.employeeName === employeeName);
-            
-            // Update modal title
-            document.getElementById('modalEmployeeName').textContent = employeeName;
-            
-            // Update modal content
-            const tbody = document.getElementById('leaveDetailTableBody');
-            tbody.innerHTML = '';
-            
-            if (employeeLeaves.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="5" class="text-center">No leave data found</td></tr>';
-            } else {
-                employeeLeaves.forEach(leave => {
-                    const row = document.createElement('tr');
-                    
-                    // PERBAIKAN 2: Hanya tampilkan tombol delete untuk admin
-                    const actionButton = currentUser.role === 'admin' 
-                        ? `<button class="btn-delete-cuti" onclick="deleteCutiRow('${leave.id}')">
-                              <i class="fas fa-trash"></i> Delete
-                           </button>`
-                        : '<span class="text-muted">-</span>';
-                    
-                    row.innerHTML = `
-                        <td>${leave.startDate}</td>
-                        <td>${leave.endDate}</td>
-                        <td>${leave.duration}</td>
-                        <td>${leave.remarks || '-'}</td>
-                        <td>${actionButton}</td>
-                    `;
-                    tbody.appendChild(row);
-                });
-            }
-            
-            // Show modal
-            const modal = new bootstrap.Modal(document.getElementById('viewLeaveDetailModal'));
-            modal.show();
-        }
-
-        // =============================================
-        // PERBAIKAN 3: FIX CHANGE PASSWORD DAN UPDATE KE USER MANAGEMENT
-        // =============================================
-
-        // PERBAIKAN: Fungsi untuk change password - DIPERBAIKI DENGAN UPDATE KE FIRESTORE
+        // PERBAIKAN: Fungsi untuk change password user - DIPERBAIKI
         async function changeUserPassword() {
             const currentPassword = document.getElementById('userCurrentPassword').value;
             const newPassword = document.getElementById('userNewPassword').value;
@@ -3099,7 +2731,7 @@
                 // Update password di Firebase Authentication
                 await user.updatePassword(newPassword);
                 
-                // PERBAIKAN: Update password di Firestore juga
+                // PERBAIKAN: Update password di Firestore juga untuk user management
                 await db.collection('users').doc(user.uid).update({
                     password: newPassword,
                     passwordUpdatedAt: firebase.firestore.FieldValue.serverTimestamp()
@@ -3133,10 +2765,6 @@
             }
         }
 
-        // =============================================
-        // PERBAIKAN 4: FIX USER MANAGEMENT FUNCTIONS
-        // =============================================
-
         // PERBAIKAN: Fungsi untuk membuat user baru dengan password management yang benar
         async function createNewUser() {
             const email = document.getElementById('newUserEmail').value;
@@ -3168,7 +2796,7 @@
                     name: name,
                     position: position,
                     role: role,
-                    password: password,
+                    password: password, // Simpan password di Firestore untuk user management
                     createdAt: firebase.firestore.FieldValue.serverTimestamp()
                 });
                 
@@ -3233,15 +2861,34 @@
                     updatedAt: firebase.firestore.FieldValue.serverTimestamp()
                 };
                 
-                // PERBAIKAN: Jika ada password baru, update di Firestore
+                // PERBAIKAN: Jika ada password baru, update di Firestore dan Firebase Auth
                 if (newPassword) {
                     if (newPassword.length < 6) {
                         showNotification('New password must be at least 6 characters', 'error');
                         return;
                     }
                     
+                    // Update password di Firestore untuk user management
                     updateData.password = newPassword;
                     updateData.passwordUpdatedAt = firebase.firestore.FieldValue.serverTimestamp();
+                    
+                    // PERBAIKAN: Update password di Firebase Authentication
+                    // Hanya admin yang bisa update password user lain
+                    if (currentUser.role === 'admin') {
+                        try {
+                            // Dapatkan user dari Firebase Auth
+                            const userRecord = await auth.getUser(userId);
+                            if (userRecord) {
+                                // Update password di Firebase Auth
+                                await auth.updateUser(userId, {
+                                    password: newPassword
+                                });
+                            }
+                        } catch (authError) {
+                            console.error('Error updating password in Firebase Auth:', authError);
+                            // Lanjutkan update di Firestore meski ada error di Auth
+                        }
+                    }
                 }
                 
                 // Update data di Firestore
@@ -3263,6 +2910,137 @@
             } catch (error) {
                 console.error('Error updating user:', error);
                 showNotification('Error updating user: ' + error.message, 'error');
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        // PERBAIKAN: Fungsi untuk memuat data users dengan password yang ditampilkan
+        async function loadUsers() {
+            try {
+                const querySnapshot = await db.collection('users').get();
+                
+                users = [];
+                querySnapshot.forEach(doc => {
+                    users.push({
+                        id: doc.id,
+                        ...doc.data()
+                    });
+                });
+                
+                updateUserTable();
+                
+            } catch (error) {
+                console.error('Error loading users:', error);
+            }
+        }
+
+        // PERBAIKAN: Fungsi untuk update user table dengan password visibility toggle
+        function updateUserTable() {
+            const tbody = document.getElementById('userTableBody');
+            tbody.innerHTML = '';
+            
+            if (users.length === 0) {
+                const row = document.createElement('tr');
+                row.innerHTML = `<td colspan="7" class="text-center">No users found</td>`;
+                tbody.appendChild(row);
+                return;
+            }
+            
+            users.forEach((user, index) => {
+                const row = document.createElement('tr');
+                
+                // PERBAIKAN: Tambahkan password visibility toggle
+                const passwordField = user.password ? 
+                    `<div class="password-field">
+                        <span class="password-text" id="password-${user.id}">••••••••</span>
+                        <span class="password-toggle" onclick="togglePasswordVisibility('${user.id}', '${user.password}')">
+                            <i class="fas fa-eye"></i>
+                        </span>
+                    </div>` : 
+                    '<span class="text-muted">No password set</span>';
+                
+                row.innerHTML = `
+                    <td>${index + 1}</td>
+                    <td>${user.email}</td>
+                    <td>${user.name || '-'}</td>
+                    <td>${user.position || '-'}</td>
+                    <td>${user.role}</td>
+                    <td>${passwordField}</td>
+                    <td>
+                        <button class="btn-edit" onclick="editUser('${user.id}')">
+                            <i class="fas fa-edit"></i> Edit
+                        </button>
+                        <button class="btn-delete" onclick="deleteUser('${user.id}')">
+                            <i class="fas fa-trash"></i> Delete
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        // PERBAIKAN: Fungsi untuk toggle password visibility
+        function togglePasswordVisibility(userId, password) {
+            const passwordElement = document.getElementById(`password-${userId}`);
+            const toggleElement = passwordElement.nextElementSibling;
+            
+            if (passwordElement.textContent === '••••••••') {
+                passwordElement.textContent = password;
+                toggleElement.innerHTML = '<i class="fas fa-eye-slash"></i>';
+            } else {
+                passwordElement.textContent = '••••••••';
+                toggleElement.innerHTML = '<i class="fas fa-eye"></i>';
+            }
+        }
+
+        // PERBAIKAN: Fungsi untuk edit user
+        function editUser(userId) {
+            const user = users.find(u => u.id === userId);
+            if (!user) return;
+            
+            document.getElementById('editUserId').value = user.id;
+            document.getElementById('editUserEmail').value = user.email;
+            document.getElementById('editUserName').value = user.name || '';
+            document.getElementById('editUserPosition').value = user.position || '';
+            document.getElementById('editUserRole').value = user.role;
+            document.getElementById('editUserPassword').value = '';
+            
+            const modal = new bootstrap.Modal(document.getElementById('editUserModal'));
+            modal.show();
+        }
+
+        // PERBAIKAN: Fungsi untuk delete user
+        async function deleteUser(userId) {
+            if (!confirm('Are you sure you want to delete this user?')) {
+                return;
+            }
+            
+            try {
+                showLoading(true);
+                
+                // Hapus dari Firestore
+                await db.collection('users').doc(userId).delete();
+                
+                // PERBAIKAN: Hapus dari Firebase Auth juga
+                try {
+                    await auth.deleteUser(userId);
+                } catch (authError) {
+                    console.warn('Could not delete user from Firebase Auth:', authError);
+                    // Lanjutkan meski ada error di Auth
+                }
+                
+                // Hapus dari data lokal
+                users = users.filter(u => u.id !== userId);
+                
+                // Update tabel
+                updateUserTable();
+                
+                showNotification('User deleted successfully', 'success');
+                
+            } catch (error) {
+                console.error('Error deleting user:', error);
+                showNotification('Error deleting user: ' + error.message, 'error');
             } finally {
                 showLoading(false);
             }
@@ -5952,7 +5730,7 @@
                     const batch = db.batch();
                     
                     overtimeSnapshot.forEach(doc => {
-                        // Reset data RKP PIC dan Remarks
+                        // Reset data yang terkait dengan overtime form
                         const docRef = db.collection('overtime').doc(doc.id);
                         
                         batch.update(docRef, {
@@ -5970,15 +5748,10 @@
                     });
                     
                     await batch.commit();
-                    console.log('Overtime calculation data reset after record deletion');
+                    console.log('Overtime calculation data removed after overtime record deletion');
                     
                     // Refresh data overtime calculation
                     await loadOvertimeCalculationData();
-                    
-                    // Update table if currently viewing overtime tab
-                    if (currentTab === "overtime") {
-                        updateOvertimeTable();
-                    }
                 }
                 
             } catch (error) {
@@ -5986,868 +5759,467 @@
             }
         }
 
-        // PERBAIKAN: Fungsi untuk update total overtime dengan parameter data yang sudah difilter
-        function updateTotalOvertime(filteredData = null) {
-            const totalOvertimeElement = document.getElementById('totalOvertimeValue');
+        // =============================================
+        // PERBAIKAN: SISTEM NAVIGASI KEYBOARD YANG LEBIH BAIK
+        // =============================================
+
+        // PERBAIKAN: Setup navigasi keyboard yang lebih stabil
+        function setupKeyboardNavigation() {
+            const table = document.querySelector('#entryTable');
+            if (!table) return;
             
-            // Gunakan data yang sudah difilter jika diberikan, jika tidak gunakan semua data
-            let dataToCalculate = filteredData || rekapLemburData;
+            // Remove existing event listeners to prevent duplicates
+            table.removeEventListener('keydown', handleTableKeydown);
+            table.removeEventListener('click', handleTableClick);
+            table.removeEventListener('focusin', handleTableFocus);
             
-            // PERBAIKAN: Filter tambahan berdasarkan user role
-            if (currentUser.role === 'user') {
-                dataToCalculate = dataToCalculate.filter(record => 
-                    record.employeeEmail === currentUser.email
-                );
-            } else if (currentUser.role === 'admin') {
-                const employeeFilter = document.getElementById('overtimeEmployeeFilter').value;
-                if (employeeFilter !== 'all') {
-                    dataToCalculate = dataToCalculate.filter(record => record.employeeName === employeeFilter);
+            // Add new event listeners
+            table.addEventListener('keydown', handleTableKeydown);
+            table.addEventListener('click', handleTableClick);
+            table.addEventListener('focusin', handleTableFocus);
+        }
+
+        // PERBAIKAN: Fungsi untuk menangani keyboard navigation
+        function handleTableKeydown(e) {
+            // Hanya tangani tombol panah dan Tab
+            if (!['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Tab', 'Enter'].includes(e.key)) {
+                return;
+            }
+            
+            const activeElement = document.activeElement;
+            
+            // Pastikan elemen yang aktif adalah input shift
+            if (!activeElement || !activeElement.classList.contains('shift-input')) {
+                return;
+            }
+            
+            e.preventDefault();
+            
+            const cell = activeElement;
+            const row = cell.closest('tr');
+            const allCells = Array.from(row.querySelectorAll('.shift-input'));
+            const cellIndex = allCells.indexOf(cell);
+            
+            let targetCell = null;
+            
+            switch(e.key) {
+                case 'ArrowUp':
+                    const prevRow = row.previousElementSibling;
+                    if (prevRow) {
+                        const prevCells = prevRow.querySelectorAll('.shift-input');
+                        if (prevCells[cellIndex]) {
+                            targetCell = prevCells[cellIndex];
+                        }
+                    }
+                    break;
+                    
+                case 'ArrowDown':
+                case 'Enter': // Enter juga pindah ke bawah
+                    const nextRow = row.nextElementSibling;
+                    if (nextRow) {
+                        const nextCells = nextRow.querySelectorAll('.shift-input');
+                        if (nextCells[cellIndex]) {
+                            targetCell = nextCells[cellIndex];
+                        }
+                    }
+                    break;
+                    
+                case 'ArrowLeft':
+                    if (cellIndex > 0) {
+                        targetCell = allCells[cellIndex - 1];
+                    }
+                    break;
+                    
+                case 'ArrowRight':
+                    if (cellIndex < allCells.length - 1) {
+                        targetCell = allCells[cellIndex + 1];
+                    }
+                    break;
+                    
+                case 'Tab':
+                    if (e.shiftKey) {
+                        // Shift+Tab - move left
+                        if (cellIndex > 0) {
+                            targetCell = allCells[cellIndex - 1];
+                        } else {
+                            // Pindah ke baris sebelumnya jika di sel pertama
+                            const prevRow = row.previousElementSibling;
+                            if (prevRow) {
+                                const prevCells = prevRow.querySelectorAll('.shift-input');
+                                if (prevCells.length > 0) {
+                                    targetCell = prevCells[prevCells.length - 1];
+                                }
+                            }
+                        }
+                    } else {
+                        // Tab - move right
+                        if (cellIndex < allCells.length - 1) {
+                            targetCell = allCells[cellIndex + 1];
+                        } else {
+                            // Pindah ke baris berikutnya jika di sel terakhir
+                            const nextRow = row.nextElementSibling;
+                            if (nextRow) {
+                                const nextCells = nextRow.querySelectorAll('.shift-input');
+                                if (nextCells.length > 0) {
+                                    targetCell = nextCells[0];
+                                }
+                            }
+                        }
+                    }
+                    break;
+            }
+            
+            if (targetCell) {
+                targetCell.focus();
+                targetCell.select();
+                currentFocusedCell = targetCell;
+            }
+        }
+
+        // PERBAIKAN: Fungsi untuk menangani klik pada tabel
+        function handleTableClick(e) {
+            if (e.target.classList.contains('shift-input')) {
+                currentFocusedCell = e.target;
+                e.target.select(); // Auto-select text saat diklik
+            }
+        }
+
+        // PERBAIKAN: Fungsi untuk menangani fokus pada tabel
+        function handleTableFocus(e) {
+            if (e.target.classList.contains('shift-input')) {
+                currentFocusedCell = e.target;
+                
+                // Auto-select text saat cell mendapatkan fokus (dengan delay kecil)
+                setTimeout(() => {
+                    if (document.activeElement === e.target) {
+                        e.target.select();
+                    }
+                }, 10);
+            }
+        }
+
+        // PERBAIKAN: Fungsi untuk menangani input shift dengan navigasi yang lebih baik
+        function setupShiftInputHandling() {
+            const table = document.querySelector('#entryTable');
+            if (!table) return;
+            
+            // Remove existing event listener to prevent duplicates
+            table.removeEventListener('input', handleShiftInput);
+            
+            // Add new event listener
+            table.addEventListener('input', handleShiftInput);
+        }
+
+        // PERBAIKAN: Fungsi untuk menangani input shift
+        function handleShiftInput(e) {
+            if (e.target.classList.contains('shift-input')) {
+                const input = e.target;
+                const value = input.value.toUpperCase();
+                
+                // Auto-format untuk shift codes
+                if (value.length > 0) {
+                    // Validasi kode shift yang diizinkan
+                    const validShifts = ['1', '2', '3', '11', '22', 'C', 'O'];
+                    if (validShifts.includes(value)) {
+                        input.value = value;
+                        updateShiftColor(input);
+                        
+                        // Auto-pindah ke cell berikutnya setelah input valid (dengan delay)
+                        setTimeout(() => {
+                            if (input.nextElementSibling && input.nextElementSibling.classList.contains('shift-input')) {
+                                input.nextElementSibling.focus();
+                                input.nextElementSibling.select();
+                            }
+                        }, 100); // Delay sedikit lebih lama untuk stabilitas
+                    } else if (value.length >= 2) {
+                        // Reset jika input tidak valid
+                        input.value = '';
+                    }
                 }
             }
-            
-            // Filter berdasarkan date range
-            const startDate = document.getElementById('startDateOvertimeOutput').valueAsDate;
-            const endDate = document.getElementById('endDateOvertimeOutput').valueAsDate;
-            
-            if (startDate && endDate) {
-                dataToCalculate = dataToCalculate.filter(record => {
-                    const recordDate = new Date(record.date);
-                    return recordDate >= startDate && recordDate <= endDate;
-                });
-            }
-            
-            // Hitung total overtime
-            let totalMinutes = 0;
-            dataToCalculate.forEach(record => {
-                const [hours, minutes] = record.overtimeDuration.split(':').map(Number);
-                totalMinutes += hours * 60 + minutes;
-            });
-            
-            const totalHours = Math.floor(totalMinutes / 60);
-            const remainingMinutes = totalMinutes % 60;
-            
-            totalOvertimeElement.textContent = 
-                `${String(totalHours).padStart(2, '0')}:${String(remainingMinutes).padStart(2, '0')}`;
-        }
-
-        // Fungsi untuk update overtime display saat filter berubah
-        function updateOvertimeDisplay() {
-            updateOvertimeDetailTable();
-            updateAdminOvertimeDetailTable();
         }
 
         // =============================================
-        // PERBAIKAN: FUNGSI UNTUK CUTI DAN LAINNYA
+        // PERBAIKAN: ATTENDANCE SUMMARY HANYA MENGHITUNG DATA SESUAI FILTER TANGGAL
         // =============================================
 
-        // PERBAIKAN: Fungsi untuk menghitung durasi cuti berdasarkan tahun
-        function calculateDuration(startDate, endDate) {
-            const start = new Date(startDate);
-            const end = new Date(endDate);
-            const diffTime = Math.abs(end - start);
-            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1; // +1 karena inklusif
-            return diffDays;
-        }
-
-        // PERBAIKAN: Fungsi untuk menghitung sisa cuti berdasarkan tahun
-        function calculateRemainingLeave(employeeName) {
-            const currentYear = new Date().getFullYear();
+        // PERBAIKAN: Function to generate attendance summary data dengan filter tanggal
+        function generateAttendanceSummary() {
+            const summaryData = {};
             
-            // Total awal cuti adalah 12 hari per tahun
-            const totalLeave = 12;
+            // PERBAIKAN 1: Dapatkan filter tanggal dari Attendance Table
+            const startDateAbsenTabel = document.getElementById('startDateAbsenTabel').valueAsDate;
+            const endDateAbsenTabel = document.getElementById('endDateAbsenTabel').valueAsDate;
             
-            // Cari semua cuti untuk karyawan ini di tahun ini
-            const employeeLeaves = cutiData.filter(cuti => {
-                if (cuti.employeeName !== employeeName) return false;
+            // Process each employee in absenTabelData
+            absenTabelData.forEach(employee => {
+                if (!employee.name) return;
                 
-                // Filter berdasarkan tahun
-                const startYear = new Date(cuti.startDate).getFullYear();
-                return startYear === currentYear;
-            });
-            
-            // Hitung total durasi cuti yang sudah diambil di tahun ini
-            let totalTaken = 0;
-            employeeLeaves.forEach(leave => {
-                totalTaken += leave.duration;
-            });
-            
-            // Hitung sisa cuti
-            const remaining = totalLeave - totalTaken;
-            
-            // Pastikan tidak negatif
-            return Math.max(0, remaining);
-        }
-
-        // PERBAIKAN: Fungsi untuk menambahkan data cuti ke tabel dengan tombol delete
-        function addCutiToTable(employeeName, startDate, endDate, duration, cutiId) {
-            const tableBody = document.getElementById('cutiTableBody');
-            const rowCount = tableBody.rows.length;
-            
-            const row = document.createElement('tr');
-            row.innerHTML = `
-                <td>${rowCount + 1}</td>
-                <td>${employeeName}</td>
-                <td>${startDate}</td>
-                <td>${endDate}</td>
-                <td>${duration}</td>
-                <td><input type="text" class="form-control form-control-sm remarks-input" value="" placeholder="Enter remarks"></td>
-                <td>
-                    <button class="btn btn-futuristic btn-sm edit-cuti-btn">
-                        <i class="fas fa-edit"></i> Edit
-                    </button>
-                    <button class="btn-delete-cuti" onclick="deleteCutiRow('${cutiId}')">
-                        <i class="fas fa-trash"></i> Delete
-                    </button>
-                </td>
-            `;
-            
-            // Tambahkan event listener untuk tombol edit
-            const editBtn = row.querySelector('.edit-cuti-btn');
-            editBtn.addEventListener('click', function() {
-                const remarksInput = row.querySelector('.remarks-input');
-                remarksInput.readOnly = false;
-                remarksInput.focus();
-                remarksInput.select();
+                // Initialize employee summary if not exists
+                if (!summaryData[employee.name]) {
+                    summaryData[employee.name] = {
+                        name: employee.name,
+                        off: 0,
+                        morning: 0,
+                        afternoon: 0,
+                        night: 0,
+                        morningPart: 0,
+                        afternoonPart: 0,
+                        leave: 0,
+                        totalAttendance: 0,
+                        totalWorkDay: 0
+                    };
+                }
                 
-                // Ubah tombol menjadi Save
-                this.innerHTML = '<i class="fas fa-save"></i> Save';
-                this.classList.remove('edit-cuti-btn');
-                this.classList.add('save-cuti-btn');
-                
-                // Tambahkan event listener untuk tombol save
-                this.addEventListener('click', function() {
-                    remarksInput.readOnly = true;
-                    this.innerHTML = '<i class="fas fa-edit"></i> Edit';
-                    this.classList.remove('save-cuti-btn');
-                    this.classList.add('edit-cuti-btn');
-                    
-                    // Update data cuti
-                    const cuti = cutiData.find(c => c.id === cutiId);
-                    if (cuti) {
-                        cuti.remarks = remarksInput.value;
-                    }
-                });
-            });
-        }
-
-        // PERBAIKAN: Fungsi untuk menghapus baris cuti
-        async function deleteCutiRow(cutiId) {
-            if (!confirm('Are you sure you want to delete this leave record?')) {
-                return;
-            }
-            
-            try {
-                showLoading(true);
-                
-                // Hapus dari Firestore
-                await db.collection('cuti').doc(cutiId).delete();
-                
-                // Hapus dari data lokal
-                cutiData = cutiData.filter(cuti => cuti.id !== cutiId);
-                
-                // Update tampilan
-                updateCutiTable();
-                generateCutiDetailData();
-                
-                showNotification('Leave record deleted successfully', 'success');
-                
-            } catch (error) {
-                console.error('Error deleting leave record:', error);
-                showNotification('Error deleting leave record: ' + error.message, 'error');
-            } finally {
-                showLoading(false);
-            }
-        }
-
-        // =============================================
-        // PERBAIKAN UNTUK SUMMARIZE LEAVE
-        // =============================================
-
-        // Fungsi untuk generate data summarize leave - PERBAIKAN
-        function generateCutiDetailData() {
-            // Kosongkan tabel detail
-            document.getElementById('cutiDetailTableBody').innerHTML = '';
-            
-            // Reset data cuti detail
-            cutiDetailData = [];
-            
-            // Dapatkan semua karyawan dari absensiData atau initialEmployees
-            const allEmployees = absensiData.length > 0 ? absensiData : initialEmployees;
-            
-            // Buat set untuk melacak karyawan yang sudah diproses
-            const processedEmployees = new Set();
-            
-            // Proses setiap karyawan
-            allEmployees.forEach(employee => {
-                if (processedEmployees.has(employee.name)) return; // Skip jika sudah diproses
-                processedEmployees.add(employee.name);
-                
-                // Hitung sisa cuti untuk karyawan ini
-                const remainingLeave = calculateRemainingLeave(employee.name);
-                
-                // Tambahkan ke data cuti detail
-                const cutiDetail = {
-                    employeeName: employee.name,
-                    workArea: employee.area,
-                    position: employee.position,
-                    remainingLeave: remainingLeave
-                };
-                
-                cutiDetailData.push(cutiDetail);
-                
-                // Tambahkan ke tabel detail
-                addCutiToDetailTable(cutiDetail);
-            });
-        }
-
-        // Fungsi untuk menambahkan data cuti ke tabel detail - PERBAIKAN
-        function addCutiToDetailTable(cutiDetail) {
-            const tableBody = document.getElementById('cutiDetailTableBody');
-            const rowCount = tableBody.rows.length;
-            
-            const row = tableBody.insertRow();
-            row.innerHTML = `
-                <td>${rowCount + 1}</td>
-                <td>${cutiDetail.employeeName}</td>
-                <td>${cutiDetail.workArea}</td>
-                <td>${cutiDetail.position}</td>
-                <td>${cutiDetail.remainingLeave}</td>
-                <td>
-                    <button class="btn btn-info btn-sm view-leave-details" onclick="viewLeaveDetails('${cutiDetail.employeeName}')">
-                        <i class="fas fa-eye"></i> View
-                    </button>
-                </td>
-            `;
-        }
-
-        // PERBAIKAN: Fungsi untuk update tabel cuti dengan tombol delete
-        function updateCutiTable() {
-            const tableBody = document.getElementById('cutiTableBody');
-            tableBody.innerHTML = '';
-            
-            cutiData.forEach((cuti, index) => {
-                const row = tableBody.insertRow();
-                row.innerHTML = `
-                    <td>${index + 1}</td>
-                    <td>${cuti.employeeName}</td>
-                    <td>${cuti.startDate}</td>
-                    <td>${cuti.endDate}</td>
-                    <td>${cuti.duration}</td>
-                    <td><input type="text" class="form-control form-control-sm remarks-input" value="${cuti.remarks || ''}" placeholder="Enter remarks"></td>
-                    <td>
-                        <button class="btn btn-futuristic btn-sm edit-cuti-btn">
-                            <i class="fas fa-edit"></i> Edit
-                        </button>
-                        <button class="btn-delete-cuti" onclick="deleteCutiRow('${cuti.id}')">
-                            <i class="fas fa-trash"></i> Delete
-                        </button>
-                    </td>
-                `;
-                
-                // Tambahkan event listener untuk tombol edit
-                const editBtn = row.querySelector('.edit-cuti-btn');
-                editBtn.addEventListener('click', function() {
-                    const remarksInput = row.querySelector('.remarks-input');
-                    remarksInput.readOnly = false;
-                    remarksInput.focus();
-                    remarksInput.select();
-                    
-                    // Ubah tombol menjadi Save
-                    this.innerHTML = '<i class="fas fa-save"></i> Save';
-                    this.classList.remove('edit-cuti-btn');
-                    this.classList.add('save-cuti-btn');
-                    
-                    // Tambahkan event listener untuk tombol save
-                    this.addEventListener('click', function() {
-                        remarksInput.readOnly = true;
-                        this.innerHTML = '<i class="fas fa-edit"></i> Edit';
-                        this.classList.remove('save-cuti-btn');
-                        this.classList.add('edit-cuti-btn');
-                        
-                        // Update data cuti
-                        cuti.remarks = remarksInput.value;
-                    });
-                });
-            });
-        }
-
-        // PERBAIKAN: Fungsi untuk memuat data cuti dari Firestore
-        async function loadCutiData() {
-            try {
-                const cutiSnapshot = await db.collection('cuti').get();
-                
-                cutiData = [];
-                cutiSnapshot.forEach(doc => {
-                    cutiData.push({
-                        id: doc.id,
-                        ...doc.data()
-                    });
-                });
-                
-                // Update tabel cuti
-                updateCutiTable();
-                
-                // Generate data cuti detail
-                generateCutiDetailData();
-                
-            } catch (error) {
-                console.error('Error loading leave data:', error);
-            }
-        }
-
-        // PERBAIKAN: Fungsi untuk menyimpan data cuti ke Firestore dan update tabel attendance
-        async function saveCutiDataToFirestore() {
-            if (!isOnline) {
-                console.log('Offline - data will be saved when connection is restored');
-                return;
-            }
-            
-            try {
-                // Simpan data cuti ke Firestore
-                const batch = db.batch();
-                
-                // Hapus data cuti lama
-                const cutiSnapshot = await db.collection('cuti').get();
-                cutiSnapshot.forEach(doc => {
-                    batch.delete(doc.ref);
-                });
-                
-                // Tambahkan data cuti baru
-                cutiData.forEach(cuti => {
-                    const docRef = db.collection('cuti').doc(cuti.id);
-                    batch.set(docRef, {
-                        employeeName: cuti.employeeName,
-                        startDate: cuti.startDate,
-                        endDate: cuti.endDate,
-                        duration: cuti.duration,
-                        remarks: cuti.remarks || '',
-                        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-                    });
-                });
-                
-                await batch.commit();
-                
-                // PERBAIKAN: Update tabel attendance dengan shift 'C' untuk hari cuti
-                await updateAttendanceWithCuti();
-                
-                // Generate data cuti detail
-                generateCutiDetailData();
-                
-                showNotification('Leave data saved successfully and attendance updated', 'success');
-                
-            } catch (error) {
-                console.error('Error saving leave data:', error);
-                showNotification('Error saving leave data: ' + error.message, 'error');
-            }
-        }
-
-        // PERBAIKAN: Fungsi untuk update tabel attendance dengan shift 'C' untuk hari cuti
-        async function updateAttendanceWithCuti() {
-            try {
-                // Loop melalui semua data cuti
-                for (const cuti of cutiData) {
-                    const startDate = new Date(cuti.startDate);
-                    const endDate = new Date(cuti.endDate);
-                    const employeeName = cuti.employeeName;
-                    
-                    // Loop melalui setiap hari dalam periode cuti
-                    let currentDate = new Date(startDate);
-                    while (currentDate <= endDate) {
-                        const dateStr = formatDateForShift(currentDate);
-                        
-                        // Cari karyawan di absensiData
-                        const employee = absensiData.find(emp => emp.name === employeeName);
-                        if (employee) {
-                            // Update shift menjadi 'C' untuk tanggal tersebut
-                            if (!employee.shifts) employee.shifts = {};
-                            employee.shifts[dateStr] = 'C';
+                // Count shifts for this employee - PERBAIKAN 1: Hanya hitung yang sesuai filter tanggal
+                if (employee.shifts) {
+                    Object.entries(employee.shifts).forEach(([dateStr, shiftCode]) => {
+                        // PERBAIKAN 1: Filter berdasarkan tanggal
+                        const shiftDate = parseDateFromString(dateStr);
+                        if (startDateAbsenTabel && endDateAbsenTabel) {
+                            if (shiftDate < startDateAbsenTabel || shiftDate > endDateAbsenTabel) {
+                                return; // Skip jika tanggal tidak dalam range filter
+                            }
                         }
                         
-                        // Pindah ke hari berikutnya
-                        currentDate.setDate(currentDate.getDate() + 1);
-                    }
-                }
-                
-                // Simpan perubahan ke Firestore
-                await saveDataToFirestore();
-                
-                // Update tampilan tabel
-                updateEntryTable();
-                updateAbsenTabelTable();
-                
-            } catch (error) {
-                console.error('Error updating attendance with leave data:', error);
-            }
-        }
-
-        // =============================================
-        // PERBAIKAN OVERTIME FORM DENGAN DURATION
-        // =============================================
-
-        // Fungsi untuk menambah row pada form overtime
-        function addRekapRow() {
-            const tbody = document.getElementById('rekapLemburTableBody');
-            const rowCount = tbody.rows.length;
-            const rowId = Date.now() + rowCount; // ID unik untuk row
-            
-            const row = document.createElement('tr');
-            row.setAttribute('data-row-id', rowId);
-            row.innerHTML = `
-                <td>${rowCount + 1}</td>
-                <td><input type="text" class="form-control form-control-sm total-project" data-row="${rowId}"></td>
-                <td>
-                    <input type="number" class="form-control form-control-sm total-plant" 
-                           data-row="${rowId}" min="1" max="7" value="1">
-                </td>
-                <td>
-                    <div class="plant-select-container" id="plantContainer-${rowId}">
-                        <select class="form-control form-control-sm plant-select" data-row="${rowId}">
-                            <option value="">Select Plant</option>
-                            ${plantOptions.map(plant => `<option value="${plant}">${plant}</option>`).join('')}
-                        </select>
-                    </div>
-                </td>
-                <td><input type="text" class="form-control form-control-sm volume" data-row="${rowId}"></td>
-                <td>
-                    <button type="button" class="btn btn-danger btn-sm" onclick="removeRekapRow(this)">
-                        <i class="fas fa-trash"></i>
-                    </button>
-                </td>
-            `;
-            
-            tbody.appendChild(row);
-            currentRekapRows.push(rowId);
-            
-            // Setup event listener untuk total plant change
-            const totalPlantInput = row.querySelector('.total-plant');
-            totalPlantInput.addEventListener('change', function() {
-                updatePlantSelectors(this);
-            });
-        }
-
-        // Fungsi untuk menghapus row
-        function removeRekapRow(button) {
-            const row = button.closest('tr');
-            const rowId = row.getAttribute('data-row-id');
-            
-            // Hapus dari array current rows
-            currentRekapRows = currentRekapRows.filter(id => id != rowId);
-            
-            row.remove();
-            updateRowNumbers();
-        }
-
-        // Fungsi untuk update nomor row
-        function updateRowNumbers() {
-            const rows = document.querySelectorAll('#rekapLemburTableBody tr');
-            rows.forEach((row, index) => {
-                row.cells[0].textContent = index + 1;
-            });
-        }
-
-        // Fungsi untuk update plant selectors berdasarkan total plant
-        function updatePlantSelectors(input) {
-            const rowId = input.getAttribute('data-row');
-            const totalPlant = parseInt(input.value) || 1;
-            const plantContainer = document.getElementById(`plantContainer-${rowId}`);
-            
-            // Clear existing selects
-            plantContainer.innerHTML = '';
-            
-            // Add new selects based on total plant
-            for (let i = 0; i < totalPlant; i++) {
-                const select = document.createElement('select');
-                select.className = 'form-control form-control-sm plant-select';
-                select.setAttribute('data-row', rowId);
-                select.innerHTML = `
-                    <option value="">Select Plant</option>
-                    ${plantOptions.map(plant => `<option value="${plant}">${plant}</option>`).join('')}
-                `;
-                plantContainer.appendChild(select);
-                
-                // Add spacing between selects
-                if (i < totalPlant - 1) {
-                    plantContainer.appendChild(document.createElement('br'));
-                }
-            }
-        }
-
-        // PERBAIKAN: Fungsi untuk menyimpan data overtime - DIPERBAIKI
-        async function saveRekapLembur() {
-            if (!currentUser) {
-                showNotification('Please login first', 'error');
-                return;
-            }
-            
-            const date = document.getElementById('rekapDate').value;
-            const startTime = document.getElementById('rekapStartTime').value;
-            const endTime = document.getElementById('rekapEndTime').value;
-            const taskDescription = document.getElementById('uraianTugas').value;
-            
-            if (!date || !startTime || !endTime) {
-                showNotification('Please fill date, start time, and end time', 'error');
-                return;
-            }
-            
-            // PERBAIKAN: Validasi waktu untuk overtime yang melewati tengah malam
-            // Tidak ada validasi startTime >= endTime karena overtime bisa melewati tengah malam
-            // Contoh: 23:00 - 08:00 (overnight overtime)
-            
-            // Hitung overtime duration dengan support untuk overnight overtime
-            const overtimeDuration = calculateOvertimeDuration(startTime, endTime);
-            
-            // Kumpulkan data dari tabel
-            const tableData = [];
-            const rows = document.querySelectorAll('#rekapLemburTableBody tr');
-            
-            let hasValidData = false;
-            rows.forEach(row => {
-                const rowId = row.getAttribute('data-row-id');
-                const totalProject = row.querySelector('.total-project').value;
-                const totalPlant = parseInt(row.querySelector('.total-plant').value) || 1;
-                const volume = row.querySelector('.volume').value;
-                
-                // Kumpulkan plant names
-                const plantNames = [];
-                const plantSelects = row.querySelectorAll(`.plant-select[data-row="${rowId}"]`);
-                plantSelects.forEach(select => {
-                    if (select.value) {
-                        plantNames.push(select.value);
-                    }
-                });
-                
-                // Hanya tambahkan jika ada data yang valid
-                if (totalProject || volume || plantNames.length > 0) {
-                    tableData.push({
-                        totalProject,
-                        totalPlant,
-                        plantNames: plantNames.join(', '),
-                        volume
-                    });
-                    hasValidData = true;
-                }
-            });
-            
-            if (!hasValidData && !taskDescription) {
-                showNotification('Please fill at least one row or task description', 'error');
-                return;
-            }
-            
-            // Buat data untuk disimpan
-            const overtimeRecord = {
-                employeeName: currentUser.name,
-                employeeEmail: currentUser.email,
-                date,
-                startTime,
-                endTime,
-                overtimeDuration, // Kolom Duration yang sudah dihitung
-                tableData,
-                taskDescription,
-                createdAt: firebase.firestore.FieldValue.serverTimestamp()
-            };
-            
-            try {
-                showLoading(true);
-                
-                // Simpan ke Firestore
-                const docRef = await db.collection('overtimeRecords').add(overtimeRecord);
-                overtimeRecord.id = docRef.id;
-                
-                // Tambahkan ke data lokal
-                rekapLemburData.push(overtimeRecord);
-                
-                // PERBAIKAN: Update Overtime Calculation secara otomatis dengan Duration
-                await updateOvertimeCalculation(overtimeRecord);
-                
-                // Update tampilan
-                updateOvertimeDetailTable();
-                updateAdminOvertimeDetailTable();
-                updateTotalOvertime();
-                
-                // Reset form
-                resetOvertimeForm();
-                
-                showNotification('Overtime data saved successfully and integrated with Overtime Calculation', 'success');
-                
-            } catch (error) {
-                console.error('Error saving overtime data:', error);
-                showNotification('Error saving overtime data: ' + error.message, 'error');
-            } finally {
-                showLoading(false);
-            }
-        }
-
-        // PERBAIKAN: Fungsi untuk menghitung durasi overtime dengan support overnight
-        function calculateOvertimeDuration(startTime, endTime) {
-            const start = new Date(`2000-01-01T${startTime}`);
-            const end = new Date(`2000-01-01T${endTime}`);
-            
-            // PERBAIKAN: Jika end time di hari berikutnya (setelah tengah malam)
-            if (end < start) {
-                end.setDate(end.getDate() + 1);
-            }
-            
-            const diffMs = end - start;
-            const diffHrs = Math.floor(diffMs / (1000 * 60 * 60));
-            const diffMins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
-            
-            return `${String(diffHrs).padStart(2, '0')}:${String(diffMins).padStart(2, '0')}`;
-        }
-
-        // PERBAIKAN: Fungsi untuk integrasi dengan Overtime Calculation - DIPERBAIKI DENGAN LOOKUP OTOMATIS
-        async function updateOvertimeCalculation(overtimeRecord) {
-            if (!currentUser) return;
-            
-            try {
-                // Format tanggal untuk pencarian (DD/MM/YYYY)
-                const formattedDate = formatDateForShift(new Date(overtimeRecord.date));
-                
-                console.log('Mencari data overtime calculation untuk:', {
-                    employee: overtimeRecord.employeeName,
-                    date: formattedDate,
-                    duration: overtimeRecord.overtimeDuration,
-                    task: overtimeRecord.taskDescription
-                });
-                
-                // Cari data overtime calculation yang sesuai berdasarkan nama dan tanggal
-                const overtimeSnapshot = await db.collection('overtime')
-                    .where('name', '==', overtimeRecord.employeeName)
-                    .where('date', '==', formattedDate)
-                    .get();
-                
-                if (!overtimeSnapshot.empty) {
-                    const batch = db.batch();
-                    let updatedCount = 0;
-                    
-                    overtimeSnapshot.forEach(doc => {
-                        const overtimeData = doc.data();
+                        const shift = shiftCode.toUpperCase();
                         
-                        console.log('Data ditemukan, mengupdate RKP PIC dan Remarks dengan data dari Overtime Form:', {
-                            id: doc.id,
-                            rkpPIC: overtimeRecord.overtimeDuration, // Duration dari Overtime Form
-                            remarks: overtimeRecord.taskDescription || 'Overtime recorded' // Uraian tugas dari Overtime Form
-                        });
-                        
-                        // Update existing record
-                        const docRef = db.collection('overtime').doc(doc.id);
-                        
-                        // PERBAIKAN: Update RKP PIC dengan durasi overtime dari kolom Duration
-                        batch.update(docRef, {
-                            rkpPIC: overtimeRecord.overtimeDuration, // Ambil dari kolom Duration
-                            // PERBAIKAN: Update Remarks dengan uraian tugas dari Overtime Form
-                            remarks: overtimeRecord.taskDescription || 'Overtime recorded',
-                            lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
-                        });
-                        
-                        // Update local data
-                        const localItem = overtimeCalcData.find(d => d.id === doc.id);
-                        if (localItem) {
-                            localItem.rkpPIC = overtimeRecord.overtimeDuration; // Ambil dari kolom Duration
-                            localItem.remarks = overtimeRecord.taskDescription || 'Overtime recorded';
+                        switch(shift) {
+                            case 'O':
+                                summaryData[employee.name].off++;
+                                summaryData[employee.name].totalWorkDay++; // O dihitung sebagai hari
+                                break;
+                            case '1':
+                                summaryData[employee.name].morning++;
+                                summaryData[employee.name].totalWorkDay++;
+                                summaryData[employee.name].totalAttendance++;
+                                break;
+                            case '2':
+                                summaryData[employee.name].afternoon++;
+                                summaryData[employee.name].totalWorkDay++;
+                                summaryData[employee.name].totalAttendance++;
+                                break;
+                            case '3':
+                                summaryData[employee.name].night++;
+                                summaryData[employee.name].totalWorkDay++;
+                                summaryData[employee.name].totalAttendance++;
+                                break;
+                            case '11':
+                                summaryData[employee.name].morningPart++;
+                                summaryData[employee.name].totalWorkDay++;
+                                summaryData[employee.name].totalAttendance++;
+                                break;
+                            case '22':
+                                summaryData[employee.name].afternoonPart++;
+                                summaryData[employee.name].totalWorkDay++;
+                                summaryData[employee.name].totalAttendance++;
+                                break;
+                            case 'C':
+                                summaryData[employee.name].leave++;
+                                summaryData[employee.name].totalWorkDay++; // Cuti dihitung sebagai hari
+                                break;
+                            default:
+                                // Untuk shift yang tidak dikenal, tidak dihitung
+                                break;
                         }
-                        
-                        updatedCount++;
                     });
-                    
-                    await batch.commit();
-                    console.log(`Berhasil mengupdate ${updatedCount} record di Firestore`);
-                    
-                } else {
-                    // Jika tidak ditemukan record yang cocok, buat record baru
-                    console.log('Tidak ditemukan record yang cocok, membuat record baru');
-                    await createNewOvertimeCalculationRecord(overtimeRecord, formattedDate);
                 }
-                
-                // PERBAIKAN: Refresh data overtime calculation
-                await loadOvertimeCalculationData();
-                
-                // Update table if currently viewing overtime tab
-                if (currentTab === "overtime") {
-                    updateOvertimeTable();
-                }
-                
-                console.log('Integrasi overtime calculation selesai');
-                
-            } catch (error) {
-                console.error('Error updating overtime calculation:', error);
-                // Tetap lanjutkan meski ada error di integrasi
-                console.log('Continuing without overtime calculation integration');
-            }
+            });
+            
+            return Object.values(summaryData);
         }
 
-        // Fungsi untuk reset form overtime
-        function resetOvertimeForm() {
-            document.getElementById('rekapDate').valueAsDate = new Date();
-            document.getElementById('rekapStartTime').value = '';
-            document.getElementById('rekapEndTime').value = '';
-            document.getElementById('uraianTugas').value = '';
+        // PERBAIKAN: Function untuk validasi dan koreksi data attendance summary
+        function validateAttendanceSummary() {
+            const summaryData = generateAttendanceSummary();
             
-            // Reset tabel
-            const tbody = document.getElementById('rekapLemburTableBody');
+            summaryData.forEach(employee => {
+                console.log(`Validasi data untuk ${employee.name}:`, {
+                    totalWorkDay: employee.totalWorkDay,
+                    totalAttendance: employee.totalAttendance,
+                    sumShifts: employee.off + employee.morning + employee.afternoon + 
+                              employee.night + employee.morningPart + employee.afternoonPart + employee.leave
+                });
+                
+                // Validasi: totalWorkDay harus sama dengan jumlah semua shift
+                const calculatedTotal = employee.off + employee.morning + employee.afternoon + 
+                                      employee.night + employee.morningPart + employee.afternoonPart + employee.leave;
+                
+                if (employee.totalWorkDay !== calculatedTotal) {
+                    console.warn(`Data tidak konsisten untuk ${employee.name}: totalWorkDay=${employee.totalWorkDay}, calculated=${calculatedTotal}`);
+                    // Koreksi otomatis
+                    employee.totalWorkDay = calculatedTotal;
+                }
+                
+                // Validasi: totalAttendance harus <= totalWorkDay
+                if (employee.totalAttendance > employee.totalWorkDay) {
+                    console.warn(`Total attendance melebihi total work day untuk ${employee.name}`);
+                    employee.totalAttendance = employee.totalWorkDay;
+                }
+            });
+            
+            return summaryData;
+        }
+
+        // PERBAIKAN: Function to update attendance summary table dengan validasi
+        function updateAttendanceSummaryTable() {
+            const tbody = document.getElementById('attendanceSummaryTableBody');
             tbody.innerHTML = '';
-            currentRekapRows = [];
             
-            // Tambah row pertama
-            addRekapRow();
-        }
-
-        // =============================================
-        // PERBAIKAN USER MANAGEMENT
-        // =============================================
-
-        // Fungsi untuk memperbarui tampilan tabel user management
-        function updateUserManagementTable() {
-            const userTableBody = document.getElementById('userTableBody');
-            userTableBody.innerHTML = '';
+            // Gunakan fungsi validasi
+            const summaryData = validateAttendanceSummary();
             
-            users.forEach((user, index) => {
+            if (summaryData.length === 0) {
                 const row = document.createElement('tr');
-                // PERBAIKAN: Tampilkan password user pada list user management
+                row.innerHTML = `<td colspan="11" class="text-center">No attendance data available for selected date range</td>`;
+                tbody.appendChild(row);
+                return;
+            }
+            
+            // Sort employees by default order
+            const sortedData = sortEmployeesByDefaultOrder(summaryData);
+            
+            sortedData.forEach((employee, index) => {
+                const row = document.createElement('tr');
                 row.innerHTML = `
                     <td>${index + 1}</td>
-                    <td>${user.email}</td>
-                    <td>${user.name || '-'}</td>
-                    <td>${user.position || '-'}</td>
-                    <td>${user.role}</td>
-                    <td>${user.password || '-'}</td>
-                    <td>
-                        <button class="btn btn-warning btn-sm me-1" onclick="editUser('${user.id}')">
-                            <i class="fas fa-edit"></i> Edit
-                        </button>
-                        <button class="btn btn-danger btn-sm" onclick="deleteUser('${user.id}')">
-                            <i class="fas fa-trash"></i> Delete
-                        </button>
-                    </td>
+                    <td>${employee.name}</td>
+                    <td>${employee.off}</td>
+                    <td>${employee.morning}</td>
+                    <td>${employee.afternoon}</td>
+                    <td>${employee.night}</td>
+                    <td>${employee.morningPart}</td>
+                    <td>${employee.afternoonPart}</td>
+                    <td>${employee.leave}</td>
+                    <td>${employee.totalAttendance}</td>
+                    <td>${employee.totalWorkDay}</td>
                 `;
-                userTableBody.appendChild(row);
+                tbody.appendChild(row);
             });
         }
 
-        // Fungsi untuk mengedit user
-        async function editUser(userId) {
-            const user = users.find(u => u.id === userId);
-            if (!user) return;
+        // =============================================
+        // PERBAIKAN: HILANGKAN FUNGSI DELETE PADA VIEW USER DI SUMMARY LEAVE
+        // =============================================
+
+        // PERBAIKAN: Fungsi untuk melihat detail leave - HILANGKAN TOMBOL DELETE UNTUK USER
+        function viewLeaveDetails(employeeName) {
+            // Filter cuti data berdasarkan employeeName
+            const employeeLeaves = cutiData.filter(cuti => cuti.employeeName === employeeName);
             
-            // Isi form modal edit
-            document.getElementById('editUserId').value = user.id;
-            document.getElementById('editUserEmail').value = user.email;
-            document.getElementById('editUserRole').value = user.role;
+            // Update modal title
+            document.getElementById('modalEmployeeName').textContent = employeeName;
             
-            // Isi nilai field
-            document.getElementById('editUserName').value = user.name || '';
-            document.getElementById('editUserPosition').value = user.position || '';
-            document.getElementById('editUserPassword').value = '';
+            // Update modal content
+            const tbody = document.getElementById('leaveDetailTableBody');
+            tbody.innerHTML = '';
+            
+            if (employeeLeaves.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" class="text-center">No leave data found</td></tr>';
+            } else {
+                employeeLeaves.forEach(leave => {
+                    const row = document.createElement('tr');
+                    
+                    // PERBAIKAN 2: Hanya tampilkan tombol delete untuk admin
+                    const actionButton = currentUser.role === 'admin' 
+                        ? `<button class="btn-delete-cuti" onclick="deleteCutiRow('${leave.id}')">
+                              <i class="fas fa-trash"></i> Delete
+                           </button>`
+                        : '<span class="text-muted">-</span>';
+                    
+                    row.innerHTML = `
+                        <td>${leave.startDate}</td>
+                        <td>${leave.endDate}</td>
+                        <td>${leave.duration}</td>
+                        <td>${leave.remarks || '-'}</td>
+                        <td>${actionButton}</td>
+                    `;
+                    tbody.appendChild(row);
+                });
+            }
             
             // Show modal
-            const modal = new bootstrap.Modal(document.getElementById('editUserModal'));
+            const modal = new bootstrap.Modal(document.getElementById('viewLeaveDetailModal'));
             modal.show();
         }
 
-        // Fungsi untuk menghapus user
-        async function deleteUser(userId) {
-            if (!confirm('Are you sure you want to delete this user?')) {
-                return;
-            }
-            
-            try {
-                showLoading(true);
-                
-                // Hapus user dari Firestore
-                await db.collection('users').doc(userId).delete();
-                
-                // Hapus user dari Authentication (memerlukan Admin SDK)
-                // Untuk sekarang, kita hanya hapus dari Firestore
-                
-                showNotification('User deleted successfully', 'success');
-                
-                // Reload user data
-                await loadUsers();
-                
-            } catch (error) {
-                console.error('Error deleting user:', error);
-                showNotification('Error deleting user: ' + error.message, 'error');
-            } finally {
-                showLoading(false);
-            }
-        }
-
-        // Fungsi untuk memuat data users
-        async function loadUsers() {
-            try {
-                const usersSnapshot = await db.collection('users').get();
-                
-                users = [];
-                usersSnapshot.forEach(doc => {
-                    users.push({
-                        id: doc.id,
-                        ...doc.data()
-                    });
-                });
-                
-                // Update tampilan tabel user management
-                updateUserManagementTable();
-                
-            } catch (error) {
-                console.error('Error loading users:', error);
-                showNotification('Error loading users: ' + error.message, 'error');
-            }
-        }
-
         // =============================================
-        // PERBAIKAN: INISIALISASI TAMBAHAN
+        // EVENT LISTENERS SETUP
         // =============================================
 
-        // Initialize aplikasi saat DOM ready - DIPERBAIKI
+        // Setup event listeners saat halaman dimuat
         document.addEventListener('DOMContentLoaded', function() {
-            // Check connection status awal
-            checkConnection();
-            
-            // Setup event listeners untuk login
+            // Login event
             document.getElementById('loginBtn').addEventListener('click', function() {
                 const email = document.getElementById('email').value;
                 const password = document.getElementById('password').value;
                 login(email, password);
             });
-            
+
             // Enter key untuk login
             document.getElementById('password').addEventListener('keypress', function(e) {
                 if (e.key === 'Enter') {
-                    document.getElementById('loginBtn').click();
+                    const email = document.getElementById('email').value;
+                    const password = document.getElementById('password').value;
+                    login(email, password);
                 }
             });
-            
-            // Setup event listeners untuk tombol utama
+
+            // Logout event
+            document.getElementById('logoutBtn').addEventListener('click', logout);
+
+            // Change password sidebar button
+            document.getElementById('changePasswordSidebarBtn').addEventListener('click', function() {
+                const modal = new bootstrap.Modal(document.getElementById('changePasswordModal'));
+                modal.show();
+            });
+
+            // User change password button
+            document.getElementById('userChangePasswordBtn').addEventListener('click', changeUserPassword);
+
+            // Save user button
+            document.getElementById('saveUserBtn').addEventListener('click', createNewUser);
+
+            // Update user button
+            document.getElementById('updateUserBtn').addEventListener('click', updateUser);
+
+            // Update overtime detail button
+            document.getElementById('updateOvertimeDetailBtn').addEventListener('click', updateOvertimeDetail);
+
+            // Main folder filter events
+            document.getElementById('applyFilterMain').addEventListener('click', applyDateFilterMain);
+            document.getElementById('loadDataMain').addEventListener('click', function() {
+                loadAttendanceDataByPeriod(
+                    document.getElementById('startDateMain').valueAsDate,
+                    document.getElementById('endDateMain').valueAsDate
+                );
+            });
+
+            // Overtime & Output filter events
+            document.getElementById('applyFilterOvertimeOutput').addEventListener('click', applyDateFilterOvertimeOutput);
+            document.getElementById('loadDataOvertimeOutput').addEventListener('click', function() {
+                loadOvertimeDataByPeriod(
+                    document.getElementById('startDateOvertimeOutput').valueAsDate,
+                    document.getElementById('endDateOvertimeOutput').valueAsDate
+                );
+            });
+
+            // Attendance Table filter events
+            document.getElementById('applyFilterAbsenTabel').addEventListener('click', applyDateFilterAbsenTabel);
+            document.getElementById('loadDataAbsenTabel').addEventListener('click', function() {
+                loadAbsenTabelDataByPeriod(
+                    document.getElementById('startDateAbsenTabel').valueAsDate,
+                    document.getElementById('endDateAbsenTabel').valueAsDate
+                );
+            });
+
+            // Table actions
             document.getElementById('addRow').addEventListener('click', addNewRowWithNavigation);
             document.getElementById('saveData').addEventListener('click', saveDataToFirestore);
-            
-            // PERBAIKAN: Setup filter dengan handler yang diperbaiki
-            document.getElementById('applyFilterMain').addEventListener('click', applyDateFilterMain);
-            document.getElementById('applyFilterOvertimeOutput').addEventListener('click', applyDateFilterOvertimeOutput);
-            document.getElementById('applyFilterAbsenTabel').addEventListener('click', applyDateFilterAbsenTabel);
-            
-            // Load Data buttons
-            document.getElementById('loadDataMain').addEventListener('click', applyDateFilterMain);
-            document.getElementById('loadDataOvertimeOutput').addEventListener('click', applyDateFilterOvertimeOutput);
-            document.getElementById('loadDataAbsenTabel').addEventListener('click', applyDateFilterAbsenTabel);
-            
-            // Export buttons
-            document.getElementById('exportExcelMain').addEventListener('click', function() {
-                exportTableToExcel('entryTable', 'attendance_data');
-            });
-            
-            document.getElementById('exportExcelOvertimeOutput').addEventListener('click', function() {
-                if (currentTab === 'output') {
-                    exportTableToExcel('outputTable', 'output_data');
-                } else if (currentTab === 'overtime') {
-                    exportTableToExcel('overtimeTable', 'overtime_data');
-                }
-            });
-            
-            document.getElementById('exportExcelAbsenTabel').addEventListener('click', function() {
-                exportTableToExcel('absenTabelTable', 'absen_tabel_data');
-            });
-            
-            // Header size control
+            document.getElementById('saveOutputData').addEventListener('click', saveOutputDataToFirestore);
+            document.getElementById('saveOvertimeData').addEventListener('click', saveOvertimeDataToFirestore);
+
+            // Header size controls
             document.getElementById('applyHeaderSize').addEventListener('click', function() {
                 const width = document.getElementById('headerWidth').value;
                 const height = document.getElementById('headerHeight').value;
@@ -6868,95 +6240,20 @@
                 // Save settings
                 localStorage.setItem('headerWidth', width);
                 localStorage.setItem('headerHeight', height);
+                
+                showNotification('Header size applied successfully', 'success');
             });
-            
-            // PERBAIKAN: Setup overtime calculation dengan handler yang diperbaiki
-            document.getElementById('saveOutputData').addEventListener('click', saveOutputDataToFirestore);
-            document.getElementById('saveOvertimeData').addEventListener('click', saveOvertimeDataToFirestore);
-            
-            // Refresh overtime data button
-            document.getElementById('refreshOvertimeData').addEventListener('click', refreshOvertimeData);
-            
-            // PERBAIKAN: Setup cuti dengan handler yang diperbaiki
-            document.getElementById('addCuti').addEventListener('click', async function() {
-                const employeeName = document.getElementById('cutiEmployee').value;
-                const startDate = document.getElementById('cutiStartDate').value;
-                const endDate = document.getElementById('cutiEndDate').value;
-                
-                if (!employeeName || !startDate || !endDate) {
-                    showNotification('Please fill all leave fields', 'error');
-                    return;
-                }
-                
-                const duration = calculateDuration(startDate, endDate);
-                const remainingLeave = calculateRemainingLeave(employeeName);
-                
-                if (duration > remainingLeave) {
-                    showNotification(`Not enough leave days. Remaining: ${remainingLeave} days`, 'error');
-                    return;
-                }
-                
-                // Add to cutiData
-                const cutiId = 'cuti_' + Date.now();
-                cutiData.push({
-                    id: cutiId,
-                    employeeName: employeeName,
-                    startDate: startDate,
-                    endDate: endDate,
-                    duration: duration,
-                    remarks: ''
-                });
-                
-                // Update table
-                updateCutiTable();
-                
-                // Update remaining leave info
-                document.getElementById('remainingLeaveValue').textContent = calculateRemainingLeave(employeeName);
-                
-                showNotification('Leave added successfully. Remember to save!', 'success');
-            });
-            
-            document.getElementById('saveCuti').addEventListener('click', saveCutiDataToFirestore);
-            
-            // PERBAIKAN: Setup user management dengan handler yang diperbaiki
-            document.getElementById('saveUserBtn').addEventListener('click', createNewUser);
-            document.getElementById('updateUserBtn').addEventListener('click', updateUser);
-            
-            // PERBAIKAN: Setup change password dengan handler yang diperbaiki
-            document.getElementById('changePasswordSidebarBtn').addEventListener('click', function() {
-                document.getElementById('userCurrentPassword').value = '';
-                document.getElementById('userNewPassword').value = '';
-                document.getElementById('userConfirmPassword').value = '';
-                
-                const modal = new bootstrap.Modal(document.getElementById('changePasswordModal'));
-                modal.show();
-            });
-            
-            document.getElementById('userChangePasswordBtn').addEventListener('click', changeUserPassword);
-            
-            // PERBAIKAN: Setup update overtime detail
-            document.getElementById('updateOvertimeDetailBtn').addEventListener('click', updateOvertimeDetail);
-            
-            // Logout
-            document.getElementById('logoutBtn').addEventListener('click', logout);
-            
-            // Handle window resize
-            window.addEventListener('resize', handleResize);
-            window.addEventListener('orientationchange', handleResize);
-            
-            // Initial resize check
-            handleResize();
-            
-            // PERBAIKAN: Setup sorting untuk overtime table
+
+            // Overtime table sorting
             document.querySelectorAll('.sortable-header').forEach(header => {
                 header.addEventListener('click', function() {
                     const column = this.getAttribute('data-column');
                     
                     if (overtimeSortColumn === column) {
-                        // Toggle direction jika kolom sama
+                        // Toggle direction if same column
                         overtimeSortDirection = overtimeSortDirection === 'asc' ? 'desc' : 'asc';
                     } else {
-                        // Set kolom baru dengan default ascending
+                        // New column, default to ascending
                         overtimeSortColumn = column;
                         overtimeSortDirection = 'asc';
                     }
@@ -6964,16 +6261,1057 @@
                     updateOvertimeTable();
                 });
             });
-            
-            console.log('Attendance System initialized with improved navigation');
+
+            // Refresh overtime data button
+            document.getElementById('refreshOvertimeData').addEventListener('click', refreshOvertimeData);
+
+            // Handle window resize
+            window.addEventListener('resize', handleResize);
+            window.addEventListener('orientationchange', handleResize);
+
+            // Initial setup
+            handleResize();
+            checkConnection();
+
+            console.log('Attendance System initialized successfully');
         });
 
-        // Fungsi untuk export table ke Excel
-        function exportTableToExcel(tableId, filename) {
-            const table = document.getElementById(tableId);
-            const wb = XLSX.utils.table_to_book(table, {sheet: "Sheet1"});
-            XLSX.writeFile(wb, `${filename}.xlsx`);
+                // PERBAIKAN: Fungsi untuk menghapus data overtime calculation terkait
+        async function removeOvertimeCalculationData(overtimeRecord) {
+            try {
+                // Format tanggal untuk pencarian (DD/MM/YYYY)
+                const formattedDate = formatDateForShift(new Date(overtimeRecord.date));
+                
+                // Cari data overtime calculation yang sesuai
+                const overtimeSnapshot = await db.collection('overtime')
+                    .where('name', '==', overtimeRecord.employeeName)
+                    .where('date', '==', formattedDate)
+                    .get();
+                
+                if (!overtimeSnapshot.empty) {
+                    const batch = db.batch();
+                    
+                    overtimeSnapshot.forEach(doc => {
+                        // Reset data yang terkait dengan overtime form
+                        const docRef = db.collection('overtime').doc(doc.id);
+                        
+                        batch.update(docRef, {
+                            rkpPIC: "",
+                            remarks: "",
+                            lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
+                        });
+                        
+                        // Update local data
+                        const localItem = overtimeCalcData.find(d => d.id === doc.id);
+                        if (localItem) {
+                            localItem.rkpPIC = "";
+                            localItem.remarks = "";
+                        }
+                    });
+                    
+                    await batch.commit();
+                    console.log('Overtime calculation data removed after overtime record deletion');
+                    
+                    // Refresh data overtime calculation
+                    await loadOvertimeCalculationData();
+                }
+                
+            } catch (error) {
+                console.error('Error removing overtime calculation data:', error);
+            }
         }
+
+        // =============================================
+        // PERBAIKAN: SISTEM NAVIGASI KEYBOARD YANG LEBIH BAIK
+        // =============================================
+
+        // PERBAIKAN: Setup navigasi keyboard yang lebih stabil
+        function setupKeyboardNavigation() {
+            const table = document.querySelector('#entryTable');
+            if (!table) return;
+            
+            // Remove existing event listeners to prevent duplicates
+            table.removeEventListener('keydown', handleTableKeydown);
+            table.removeEventListener('click', handleTableClick);
+            table.removeEventListener('focusin', handleTableFocus);
+            
+            // Add new event listeners
+            table.addEventListener('keydown', handleTableKeydown);
+            table.addEventListener('click', handleTableClick);
+            table.addEventListener('focusin', handleTableFocus);
+        }
+
+        // PERBAIKAN: Fungsi untuk menangani keyboard navigation
+        function handleTableKeydown(e) {
+            // Hanya tangani tombol panah dan Tab
+            if (!['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Tab', 'Enter'].includes(e.key)) {
+                return;
+            }
+            
+            const activeElement = document.activeElement;
+            
+            // Pastikan elemen yang aktif adalah input shift
+            if (!activeElement || !activeElement.classList.contains('shift-input')) {
+                return;
+            }
+            
+            e.preventDefault();
+            
+            const cell = activeElement;
+            const row = cell.closest('tr');
+            const allCells = Array.from(row.querySelectorAll('.shift-input'));
+            const cellIndex = allCells.indexOf(cell);
+            
+            let targetCell = null;
+            
+            switch(e.key) {
+                case 'ArrowUp':
+                    const prevRow = row.previousElementSibling;
+                    if (prevRow) {
+                        const prevCells = prevRow.querySelectorAll('.shift-input');
+                        if (prevCells[cellIndex]) {
+                            targetCell = prevCells[cellIndex];
+                        }
+                    }
+                    break;
+                    
+                case 'ArrowDown':
+                case 'Enter': // Enter juga pindah ke bawah
+                    const nextRow = row.nextElementSibling;
+                    if (nextRow) {
+                        const nextCells = nextRow.querySelectorAll('.shift-input');
+                        if (nextCells[cellIndex]) {
+                            targetCell = nextCells[cellIndex];
+                        }
+                    }
+                    break;
+                    
+                case 'ArrowLeft':
+                    if (cellIndex > 0) {
+                        targetCell = allCells[cellIndex - 1];
+                    }
+                    break;
+                    
+                case 'ArrowRight':
+                    if (cellIndex < allCells.length - 1) {
+                        targetCell = allCells[cellIndex + 1];
+                    }
+                    break;
+                    
+                case 'Tab':
+                    if (e.shiftKey) {
+                        // Shift+Tab - move left
+                        if (cellIndex > 0) {
+                            targetCell = allCells[cellIndex - 1];
+                        } else {
+                            // Pindah ke baris sebelumnya jika di sel pertama
+                            const prevRow = row.previousElementSibling;
+                            if (prevRow) {
+                                const prevCells = prevRow.querySelectorAll('.shift-input');
+                                if (prevCells.length > 0) {
+                                    targetCell = prevCells[prevCells.length - 1];
+                                }
+                            }
+                        }
+                    } else {
+                        // Tab - move right
+                        if (cellIndex < allCells.length - 1) {
+                            targetCell = allCells[cellIndex + 1];
+                        } else {
+                            // Pindah ke baris berikutnya jika di sel terakhir
+                            const nextRow = row.nextElementSibling;
+                            if (nextRow) {
+                                const nextCells = nextRow.querySelectorAll('.shift-input');
+                                if (nextCells.length > 0) {
+                                    targetCell = nextCells[0];
+                                }
+                            }
+                        }
+                    }
+                    break;
+            }
+            
+            if (targetCell) {
+                targetCell.focus();
+                targetCell.select();
+                currentFocusedCell = targetCell;
+            }
+        }
+
+        // PERBAIKAN: Fungsi untuk menangani klik pada tabel
+        function handleTableClick(e) {
+            if (e.target.classList.contains('shift-input')) {
+                currentFocusedCell = e.target;
+                e.target.select(); // Auto-select text saat diklik
+            }
+        }
+
+        // PERBAIKAN: Fungsi untuk menangani fokus pada tabel
+        function handleTableFocus(e) {
+            if (e.target.classList.contains('shift-input')) {
+                currentFocusedCell = e.target;
+                
+                // Auto-select text saat cell mendapatkan fokus (dengan delay kecil)
+                setTimeout(() => {
+                    if (document.activeElement === e.target) {
+                        e.target.select();
+                    }
+                }, 10);
+            }
+        }
+
+        // PERBAIKAN: Fungsi untuk menangani input shift dengan navigasi yang lebih baik
+        function setupShiftInputHandling() {
+            const table = document.querySelector('#entryTable');
+            if (!table) return;
+            
+            // Remove existing event listener to prevent duplicates
+            table.removeEventListener('input', handleShiftInput);
+            
+            // Add new event listener
+            table.addEventListener('input', handleShiftInput);
+        }
+
+        // PERBAIKAN: Fungsi untuk menangani input shift
+        function handleShiftInput(e) {
+            if (e.target.classList.contains('shift-input')) {
+                const input = e.target;
+                const value = input.value.toUpperCase();
+                
+                // Auto-format untuk shift codes
+                if (value.length > 0) {
+                    // Validasi kode shift yang diizinkan
+                    const validShifts = ['1', '2', '3', '11', '22', 'C', 'O'];
+                    if (validShifts.includes(value)) {
+                        input.value = value;
+                        updateShiftColor(input);
+                        
+                        // Auto-pindah ke cell berikutnya setelah input valid (dengan delay)
+                        setTimeout(() => {
+                            if (input.nextElementSibling && input.nextElementSibling.classList.contains('shift-input')) {
+                                input.nextElementSibling.focus();
+                                input.nextElementSibling.select();
+                            }
+                        }, 100); // Delay sedikit lebih lama untuk stabilitas
+                    } else if (value.length >= 2) {
+                        // Reset jika input tidak valid
+                        input.value = '';
+                    }
+                }
+            }
+        }
+
+        // =============================================
+        // PERBAIKAN: ATTENDANCE SUMMARY HANYA MENGHITUNG DATA SESUAI FILTER TANGGAL
+        // =============================================
+
+        // PERBAIKAN: Function to generate attendance summary data dengan filter tanggal
+        function generateAttendanceSummary() {
+            const summaryData = {};
+            
+            // PERBAIKAN 1: Dapatkan filter tanggal dari Attendance Table
+            const startDateAbsenTabel = document.getElementById('startDateAbsenTabel').valueAsDate;
+            const endDateAbsenTabel = document.getElementById('endDateAbsenTabel').valueAsDate;
+            
+            // Process each employee in absenTabelData
+            absenTabelData.forEach(employee => {
+                if (!employee.name) return;
+                
+                // Initialize employee summary if not exists
+                if (!summaryData[employee.name]) {
+                    summaryData[employee.name] = {
+                        name: employee.name,
+                        off: 0,
+                        morning: 0,
+                        afternoon: 0,
+                        night: 0,
+                        morningPart: 0,
+                        afternoonPart: 0,
+                        leave: 0,
+                        totalAttendance: 0,
+                        totalWorkDay: 0
+                    };
+                }
+                
+                // Count shifts for this employee - PERBAIKAN 1: Hanya hitung yang sesuai filter tanggal
+                if (employee.shifts) {
+                    Object.entries(employee.shifts).forEach(([dateStr, shiftCode]) => {
+                        // PERBAIKAN 1: Filter berdasarkan tanggal
+                        const shiftDate = parseDateFromString(dateStr);
+                        if (startDateAbsenTabel && endDateAbsenTabel) {
+                            if (shiftDate < startDateAbsenTabel || shiftDate > endDateAbsenTabel) {
+                                return; // Skip jika tanggal tidak dalam range filter
+                            }
+                        }
+                        
+                        const shift = shiftCode.toUpperCase();
+                        
+                        switch(shift) {
+                            case 'O':
+                                summaryData[employee.name].off++;
+                                summaryData[employee.name].totalWorkDay++; // O dihitung sebagai hari
+                                break;
+                            case '1':
+                                summaryData[employee.name].morning++;
+                                summaryData[employee.name].totalWorkDay++;
+                                summaryData[employee.name].totalAttendance++;
+                                break;
+                            case '2':
+                                summaryData[employee.name].afternoon++;
+                                summaryData[employee.name].totalWorkDay++;
+                                summaryData[employee.name].totalAttendance++;
+                                break;
+                            case '3':
+                                summaryData[employee.name].night++;
+                                summaryData[employee.name].totalWorkDay++;
+                                summaryData[employee.name].totalAttendance++;
+                                break;
+                            case '11':
+                                summaryData[employee.name].morningPart++;
+                                summaryData[employee.name].totalWorkDay++;
+                                summaryData[employee.name].totalAttendance++;
+                                break;
+                            case '22':
+                                summaryData[employee.name].afternoonPart++;
+                                summaryData[employee.name].totalWorkDay++;
+                                summaryData[employee.name].totalAttendance++;
+                                break;
+                            case 'C':
+                                summaryData[employee.name].leave++;
+                                summaryData[employee.name].totalWorkDay++; // Cuti dihitung sebagai hari
+                                break;
+                            default:
+                                // Untuk shift yang tidak dikenal, tidak dihitung
+                                break;
+                        }
+                    });
+                }
+            });
+            
+            return Object.values(summaryData);
+        }
+
+        // PERBAIKAN: Function untuk validasi dan koreksi data attendance summary
+        function validateAttendanceSummary() {
+            const summaryData = generateAttendanceSummary();
+            
+            summaryData.forEach(employee => {
+                console.log(`Validasi data untuk ${employee.name}:`, {
+                    totalWorkDay: employee.totalWorkDay,
+                    totalAttendance: employee.totalAttendance,
+                    sumShifts: employee.off + employee.morning + employee.afternoon + 
+                              employee.night + employee.morningPart + employee.afternoonPart + employee.leave
+                });
+                
+                // Validasi: totalWorkDay harus sama dengan jumlah semua shift
+                const calculatedTotal = employee.off + employee.morning + employee.afternoon + 
+                                      employee.night + employee.morningPart + employee.afternoonPart + employee.leave;
+                
+                if (employee.totalWorkDay !== calculatedTotal) {
+                    console.warn(`Data tidak konsisten untuk ${employee.name}: totalWorkDay=${employee.totalWorkDay}, calculated=${calculatedTotal}`);
+                    // Koreksi otomatis
+                    employee.totalWorkDay = calculatedTotal;
+                }
+                
+                // Validasi: totalAttendance harus <= totalWorkDay
+                if (employee.totalAttendance > employee.totalWorkDay) {
+                    console.warn(`Total attendance melebihi total work day untuk ${employee.name}`);
+                    employee.totalAttendance = employee.totalWorkDay;
+                }
+            });
+            
+            return summaryData;
+        }
+
+        // PERBAIKAN: Function to update attendance summary table dengan validasi
+        function updateAttendanceSummaryTable() {
+            const tbody = document.getElementById('attendanceSummaryTableBody');
+            tbody.innerHTML = '';
+            
+            // Gunakan fungsi validasi
+            const summaryData = validateAttendanceSummary();
+            
+            if (summaryData.length === 0) {
+                const row = document.createElement('tr');
+                row.innerHTML = `<td colspan="11" class="text-center">No attendance data available for selected date range</td>`;
+                tbody.appendChild(row);
+                return;
+            }
+            
+            // Sort employees by default order
+            const sortedData = sortEmployeesByDefaultOrder(summaryData);
+            
+            sortedData.forEach((employee, index) => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${index + 1}</td>
+                    <td>${employee.name}</td>
+                    <td>${employee.off}</td>
+                    <td>${employee.morning}</td>
+                    <td>${employee.afternoon}</td>
+                    <td>${employee.night}</td>
+                    <td>${employee.morningPart}</td>
+                    <td>${employee.afternoonPart}</td>
+                    <td>${employee.leave}</td>
+                    <td>${employee.totalAttendance}</td>
+                    <td>${employee.totalWorkDay}</td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        // =============================================
+        // PERBAIKAN: HILANGKAN FUNGSI DELETE PADA VIEW USER DI SUMMARY LEAVE
+        // =============================================
+
+        // PERBAIKAN: Fungsi untuk melihat detail leave - HILANGKAN TOMBOL DELETE UNTUK USER
+        function viewLeaveDetails(employeeName) {
+            // Filter cuti data berdasarkan employeeName
+            const employeeLeaves = cutiData.filter(cuti => cuti.employeeName === employeeName);
+            
+            // Update modal title
+            document.getElementById('modalEmployeeName').textContent = employeeName;
+            
+            // Update modal content
+            const tbody = document.getElementById('leaveDetailTableBody');
+            tbody.innerHTML = '';
+            
+            if (employeeLeaves.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" class="text-center">No leave data found</td></tr>';
+            } else {
+                employeeLeaves.forEach(leave => {
+                    const row = document.createElement('tr');
+                    
+                    // PERBAIKAN 2: Hanya tampilkan tombol delete untuk admin
+                    const actionButton = currentUser.role === 'admin' 
+                        ? `<button class="btn-delete-cuti" onclick="deleteCutiRow('${leave.id}')">
+                              <i class="fas fa-trash"></i> Delete
+                           </button>`
+                        : '<span class="text-muted">-</span>';
+                    
+                    row.innerHTML = `
+                        <td>${leave.startDate}</td>
+                        <td>${leave.endDate}</td>
+                        <td>${leave.duration}</td>
+                        <td>${leave.remarks || '-'}</td>
+                        <td>${actionButton}</td>
+                    `;
+                    tbody.appendChild(row);
+                });
+            }
+            
+            // Show modal
+            const modal = new bootstrap.Modal(document.getElementById('viewLeaveDetailModal'));
+            modal.show();
+        }
+
+        // =============================================
+        // FUNGSI-FUNGSI CUTI YANG DIPERLUKAN
+        // =============================================
+
+        // Fungsi untuk memuat data cuti
+        async function loadCutiData() {
+            try {
+                const querySnapshot = await db.collection('cuti').get();
+                
+                cutiData = [];
+                querySnapshot.forEach(doc => {
+                    cutiData.push({
+                        id: doc.id,
+                        ...doc.data()
+                    });
+                });
+                
+                updateCutiTable();
+                generateCutiDetailData();
+                
+            } catch (error) {
+                console.error('Error loading cuti data:', error);
+            }
+        }
+
+        // Fungsi untuk menambah cuti
+        async function addCuti() {
+            const employeeName = document.getElementById('cutiEmployee').value;
+            const startDate = document.getElementById('cutiStartDate').value;
+            const endDate = document.getElementById('cutiEndDate').value;
+            
+            if (!employeeName || !startDate || !endDate) {
+                showNotification('Please fill all fields', 'error');
+                return;
+            }
+            
+            const start = new Date(startDate);
+            const end = new Date(endDate);
+            
+            if (start > end) {
+                showNotification('Start date cannot be after end date', 'error');
+                return;
+            }
+            
+            // Hitung durasi
+            const duration = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
+            
+            try {
+                showLoading(true);
+                
+                // Simpan ke Firestore
+                const docRef = await db.collection('cuti').add({
+                    employeeName: employeeName,
+                    startDate: startDate,
+                    endDate: endDate,
+                    duration: duration,
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                    createdBy: currentUser.email
+                });
+                
+                // Tambahkan ke data lokal
+                cutiData.push({
+                    id: docRef.id,
+                    employeeName: employeeName,
+                    startDate: startDate,
+                    endDate: endDate,
+                    duration: duration
+                });
+                
+                // Update tabel
+                updateCutiTable();
+                generateCutiDetailData();
+                
+                // Reset form
+                document.getElementById('cutiStartDate').value = '';
+                document.getElementById('cutiEndDate').value = '';
+                
+                showNotification('Leave data added successfully', 'success');
+                
+            } catch (error) {
+                console.error('Error adding cuti:', error);
+                showNotification('Error adding leave data: ' + error.message, 'error');
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        // Fungsi untuk menyimpan data cuti
+        async function saveCuti() {
+            try {
+                showLoading(true);
+                
+                // Simpan semua data cuti ke Firestore
+                const batch = db.batch();
+                
+                // Hapus data lama
+                const cutiSnapshot = await db.collection('cuti').get();
+                cutiSnapshot.forEach(doc => {
+                    batch.delete(doc.ref);
+                });
+                
+                // Tambahkan data baru
+                cutiData.forEach(cuti => {
+                    const docRef = db.collection('cuti').doc();
+                    batch.set(docRef, {
+                        employeeName: cuti.employeeName,
+                        startDate: cuti.startDate,
+                        endDate: cuti.endDate,
+                        duration: cuti.duration,
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                        createdBy: currentUser.email
+                    });
+                });
+                
+                await batch.commit();
+                showNotification('Leave data saved successfully', 'success');
+                
+            } catch (error) {
+                console.error('Error saving cuti data:', error);
+                showNotification('Error saving leave data: ' + error.message, 'error');
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        // Fungsi untuk menghapus baris cuti
+        async function deleteCutiRow(cutiId) {
+            if (!confirm('Are you sure you want to delete this leave record?')) {
+                return;
+            }
+            
+            try {
+                showLoading(true);
+                
+                // Hapus dari Firestore
+                await db.collection('cuti').doc(cutiId).delete();
+                
+                // Hapus dari data lokal
+                cutiData = cutiData.filter(cuti => cuti.id !== cutiId);
+                
+                // Update tabel
+                updateCutiTable();
+                generateCutiDetailData();
+                
+                showNotification('Leave record deleted successfully', 'success');
+                
+            } catch (error) {
+                console.error('Error deleting cuti:', error);
+                showNotification('Error deleting leave record: ' + error.message, 'error');
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        // Fungsi untuk update tabel cuti
+        function updateCutiTable() {
+            const tbody = document.getElementById('cutiTableBody');
+            tbody.innerHTML = '';
+            
+            if (cutiData.length === 0) {
+                const row = document.createElement('tr');
+                row.innerHTML = `<td colspan="7" class="text-center">No leave data found</td>`;
+                tbody.appendChild(row);
+                return;
+            }
+            
+            cutiData.forEach((cuti, index) => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${index + 1}</td>
+                    <td>${cuti.employeeName}</td>
+                    <td>${cuti.startDate}</td>
+                    <td>${cuti.endDate}</td>
+                    <td>${cuti.duration}</td>
+                    <td>${cuti.remarks || '-'}</td>
+                    <td>
+                        <button class="btn-delete-cuti" onclick="deleteCutiRow('${cuti.id}')">
+                            <i class="fas fa-trash"></i> Delete
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        // Fungsi untuk generate data cuti detail
+        function generateCutiDetailData() {
+            cutiDetailData = [];
+            
+            // Hitung total cuti per employee
+            const employeeCuti = {};
+            
+            cutiData.forEach(cuti => {
+                if (!employeeCuti[cuti.employeeName]) {
+                    employeeCuti[cuti.employeeName] = {
+                        totalCuti: 0,
+                        employeeName: cuti.employeeName
+                    };
+                }
+                employeeCuti[cuti.employeeName].totalCuti += cuti.duration;
+            });
+            
+            // Tambahkan data employee
+            const employeesToShow = absensiData.length > 0 ? absensiData : initialEmployees;
+            
+            employeesToShow.forEach(employee => {
+                const totalCuti = employeeCuti[employee.name] ? employeeCuti[employee.name].totalCuti : 0;
+                const remaining = 12 - totalCuti; // Asumsi 12 hari cuti per tahun
+                
+                cutiDetailData.push({
+                    employeeName: employee.name,
+                    area: employee.area,
+                    position: employee.position,
+                    totalCuti: totalCuti,
+                    remaining: remaining
+                });
+            });
+            
+            updateCutiDetailTable();
+        }
+
+        // Fungsi untuk update tabel cuti detail
+        function updateCutiDetailTable() {
+            const tbody = document.getElementById('cutiDetailTableBody');
+            tbody.innerHTML = '';
+            
+            if (cutiDetailData.length === 0) {
+                const row = document.createElement('tr');
+                row.innerHTML = `<td colspan="6" class="text-center">No leave summary data available</td>`;
+                tbody.appendChild(row);
+                return;
+            }
+            
+            // Sort employees by default order
+            const sortedData = sortEmployeesByDefaultOrder(cutiDetailData);
+            
+            sortedData.forEach((data, index) => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${index + 1}</td>
+                    <td>${data.employeeName}</td>
+                    <td>${data.area}</td>
+                    <td>${data.position}</td>
+                    <td>${data.remaining} days</td>
+                    <td>
+                        <span class="view-leave-details" onclick="viewLeaveDetails('${data.employeeName}')">
+                            <i class="fas fa-eye"></i> View Details
+                        </span>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        // =============================================
+        // FUNGSI-FUNGSI OVERTIME FORM YANG DIPERLUKAN
+        // =============================================
+
+        // Fungsi untuk menambah baris rekap lembur
+        function addRekapRow() {
+            const tbody = document.getElementById('rekapLemburTableBody');
+            const rowCount = currentRekapRows.length + 1;
+            
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>${rowCount}</td>
+                <td><input type="text" class="form-control form-control-sm total-project"></td>
+                <td>
+                    <select class="form-select form-select-sm total-plant">
+                        <option value="1">1</option>
+                        <option value="2">2</option>
+                        <option value="3">3</option>
+                        <option value="4">4</option>
+                        <option value="5">5</option>
+                    </select>
+                </td>
+                <td>
+                    <select class="form-select form-select-sm plant-name">
+                        <option value="">Select Plant</option>
+                        ${plantOptions.map(plant => `<option value="${plant}">${plant}</option>`).join('')}
+                    </select>
+                </td>
+                <td><input type="text" class="form-control form-control-sm volume" placeholder="m3"></td>
+                <td>
+                    <button class="btn-delete" onclick="removeRekapRow(this)">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </td>
+            `;
+            
+            tbody.appendChild(row);
+            currentRekapRows.push(row);
+        }
+
+        // Fungsi untuk menghapus baris rekap lembur
+        function removeRekapRow(button) {
+            const row = button.closest('tr');
+            const rowIndex = currentRekapRows.indexOf(row);
+            
+            if (rowIndex > -1) {
+                currentRekapRows.splice(rowIndex, 1);
+                row.remove();
+                
+                // Update nomor urut
+                updateRekapRowNumbers();
+            }
+        }
+
+        // Fungsi untuk update nomor urut baris rekap
+        function updateRekapRowNumbers() {
+            currentRekapRows.forEach((row, index) => {
+                row.cells[0].textContent = index + 1;
+            });
+        }
+
+        // Fungsi untuk menghitung durasi overtime
+        function calculateOvertimeDuration(startTime, endTime) {
+            if (!startTime || !endTime) return "00:00";
+            
+            const start = new Date(`2000-01-01T${startTime}`);
+            const end = new Date(`2000-01-01T${endTime}`);
+            
+            // Jika end time lebih kecil dari start time, berarti melewati tengah malam
+            if (end < start) {
+                end.setDate(end.getDate() + 1);
+            }
+            
+            const diffMs = end - start;
+            const diffHrs = Math.floor(diffMs / (1000 * 60 * 60));
+            const diffMins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+            
+            return `${String(diffHrs).padStart(2, '0')}:${String(diffMins).padStart(2, '0')}`;
+        }
+
+        // Fungsi untuk menyimpan rekap lembur
+        async function saveRekapLembur() {
+            const date = document.getElementById('rekapDate').value;
+            const startTime = document.getElementById('rekapStartTime').value;
+            const endTime = document.getElementById('rekapEndTime').value;
+            const taskDescription = document.getElementById('uraianTugas').value;
+            
+            if (!date || !startTime || !endTime) {
+                showNotification('Please fill date, start time, and end time', 'error');
+                return;
+            }
+            
+            // Hitung overtime duration
+            const overtimeDuration = calculateOvertimeDuration(startTime, endTime);
+            
+            // Kumpulkan data dari tabel
+            const tableData = [];
+            let hasValidData = false;
+            
+            currentRekapRows.forEach(row => {
+                const totalProject = row.querySelector('.total-project').value;
+                const totalPlant = parseInt(row.querySelector('.total-plant').value) || 1;
+                const plantNames = row.querySelector('.plant-name').value;
+                const volume = row.querySelector('.volume').value;
+                
+                // Hanya tambahkan jika ada data yang valid
+                if (totalProject || volume || plantNames) {
+                    tableData.push({
+                        totalProject,
+                        totalPlant,
+                        plantNames,
+                        volume
+                    });
+                    hasValidData = true;
+                }
+            });
+            
+            // Jika tidak ada data valid di tabel, tetap simpan dengan data kosong
+            if (!hasValidData) {
+                tableData.push({
+                    totalProject: '',
+                    totalPlant: 1,
+                    plantNames: '',
+                    volume: ''
+                });
+            }
+            
+            try {
+                showLoading(true);
+                
+                // Simpan ke Firestore
+                const docRef = await db.collection('overtimeRecords').add({
+                    employeeName: currentUser.name || currentUser.email.split('@')[0],
+                    employeeEmail: currentUser.email,
+                    date: date,
+                    startTime: startTime,
+                    endTime: endTime,
+                    overtimeDuration: overtimeDuration,
+                    tableData: tableData,
+                    taskDescription: taskDescription,
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                    createdBy: currentUser.email
+                });
+                
+                // Tambahkan ke data lokal
+                rekapLemburData.push({
+                    id: docRef.id,
+                    employeeName: currentUser.name || currentUser.email.split('@')[0],
+                    employeeEmail: currentUser.email,
+                    date: date,
+                    startTime: startTime,
+                    endTime: endTime,
+                    overtimeDuration: overtimeDuration,
+                    tableData: tableData,
+                    taskDescription: taskDescription
+                });
+                
+                // Update tampilan
+                updateOvertimeDetailTable();
+                updateTotalOvertime();
+                
+                // Reset form
+                document.getElementById('rekapDate').value = '';
+                document.getElementById('rekapStartTime').value = '';
+                document.getElementById('rekapEndTime').value = '';
+                document.getElementById('uraianTugas').value = '';
+                
+                // Hapus semua baris dan tambah satu baris default
+                const tbody = document.getElementById('rekapLemburTableBody');
+                tbody.innerHTML = '';
+                currentRekapRows = [];
+                addRekapRow();
+                
+                showNotification('Overtime form saved successfully', 'success');
+                
+            } catch (error) {
+                console.error('Error saving overtime form:', error);
+                showNotification('Error saving overtime form: ' + error.message, 'error');
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        // Fungsi untuk update total overtime
+        function updateTotalOvertime(filteredData = null) {
+            const totalOvertimeElement = document.getElementById('totalOvertimeValue');
+            
+            // Gunakan data yang sudah difilter jika diberikan, jika tidak gunakan semua data
+            let dataToCalculate = filteredData || rekapLemburData;
+            
+            // Filter berdasarkan user role
+            if (currentUser.role === 'user') {
+                dataToCalculate = dataToCalculate.filter(record => record.employeeEmail === currentUser.email);
+            }
+            
+            // Hitung total overtime
+            let totalMinutes = 0;
+            dataToCalculate.forEach(record => {
+                const [hours, minutes] = record.overtimeDuration.split(':').map(Number);
+                totalMinutes += hours * 60 + minutes;
+            });
+            
+            const totalHours = Math.floor(totalMinutes / 60);
+            const remainingMinutes = totalMinutes % 60;
+            
+            totalOvertimeElement.textContent = 
+                `${String(totalHours).padStart(2, '0')}:${String(remainingMinutes).padStart(2, '0')}`;
+        }
+
+        // Fungsi untuk update overtime display
+        function updateOvertimeDisplay() {
+            updateOvertimeDetailTable();
+            updateTotalOvertime();
+        }
+
+        // =============================================
+        // EVENT LISTENERS SETUP
+        // =============================================
+
+        // Setup event listeners saat halaman dimuat
+        document.addEventListener('DOMContentLoaded', function() {
+            // Login event
+            document.getElementById('loginBtn').addEventListener('click', function() {
+                const email = document.getElementById('email').value;
+                const password = document.getElementById('password').value;
+                login(email, password);
+            });
+
+            // Enter key untuk login
+            document.getElementById('password').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    const email = document.getElementById('email').value;
+                    const password = document.getElementById('password').value;
+                    login(email, password);
+                }
+            });
+
+            // Logout event
+            document.getElementById('logoutBtn').addEventListener('click', logout);
+
+            // Change password sidebar button
+            document.getElementById('changePasswordSidebarBtn').addEventListener('click', function() {
+                const modal = new bootstrap.Modal(document.getElementById('changePasswordModal'));
+                modal.show();
+            });
+
+            // User change password button
+            document.getElementById('userChangePasswordBtn').addEventListener('click', changeUserPassword);
+
+            // Save user button
+            document.getElementById('saveUserBtn').addEventListener('click', createNewUser);
+
+            // Update user button
+            document.getElementById('updateUserBtn').addEventListener('click', updateUser);
+
+            // Update overtime detail button
+            document.getElementById('updateOvertimeDetailBtn').addEventListener('click', updateOvertimeDetail);
+
+            // Main folder filter events
+            document.getElementById('applyFilterMain').addEventListener('click', applyDateFilterMain);
+            document.getElementById('loadDataMain').addEventListener('click', function() {
+                loadAttendanceDataByPeriod(
+                    document.getElementById('startDateMain').valueAsDate,
+                    document.getElementById('endDateMain').valueAsDate
+                );
+            });
+
+            // Overtime & Output filter events
+            document.getElementById('applyFilterOvertimeOutput').addEventListener('click', applyDateFilterOvertimeOutput);
+            document.getElementById('loadDataOvertimeOutput').addEventListener('click', function() {
+                loadOvertimeDataByPeriod(
+                    document.getElementById('startDateOvertimeOutput').valueAsDate,
+                    document.getElementById('endDateOvertimeOutput').valueAsDate
+                );
+            });
+
+            // Attendance Table filter events
+            document.getElementById('applyFilterAbsenTabel').addEventListener('click', applyDateFilterAbsenTabel);
+            document.getElementById('loadDataAbsenTabel').addEventListener('click', function() {
+                loadAbsenTabelDataByPeriod(
+                    document.getElementById('startDateAbsenTabel').valueAsDate,
+                    document.getElementById('endDateAbsenTabel').valueAsDate
+                );
+            });
+
+            // Table actions
+            document.getElementById('addRow').addEventListener('click', addNewRowWithNavigation);
+            document.getElementById('saveData').addEventListener('click', saveDataToFirestore);
+            document.getElementById('saveOutputData').addEventListener('click', saveOutputDataToFirestore);
+            document.getElementById('saveOvertimeData').addEventListener('click', saveOvertimeDataToFirestore);
+
+            // Cuti actions
+            document.getElementById('addCuti').addEventListener('click', addCuti);
+            document.getElementById('saveCuti').addEventListener('click', saveCuti);
+
+            // Header size controls
+            document.getElementById('applyHeaderSize').addEventListener('click', function() {
+                const width = document.getElementById('headerWidth').value;
+                const height = document.getElementById('headerHeight').value;
+                
+                const headers = document.querySelectorAll('#entryTable th');
+                const cells = document.querySelectorAll('#entryTable td');
+                
+                headers.forEach(header => {
+                    if (width) header.style.minWidth = width + 'px';
+                    if (height) header.style.height = height + 'px';
+                });
+                
+                cells.forEach(cell => {
+                    if (width) cell.style.minWidth = width + 'px';
+                    if (height) cell.style.height = height + 'px';
+                });
+                
+                // Save settings
+                localStorage.setItem('headerWidth', width);
+                localStorage.setItem('headerHeight', height);
+                
+                showNotification('Header size applied successfully', 'success');
+            });
+
+            // Overtime table sorting
+            document.querySelectorAll('.sortable-header').forEach(header => {
+                header.addEventListener('click', function() {
+                    const column = this.getAttribute('data-column');
+                    
+                    if (overtimeSortColumn === column) {
+                        // Toggle direction if same column
+                        overtimeSortDirection = overtimeSortDirection === 'asc' ? 'desc' : 'asc';
+                    } else {
+                        // New column, default to ascending
+                        overtimeSortColumn = column;
+                        overtimeSortDirection = 'asc';
+                    }
+                    
+                    updateOvertimeTable();
+                });
+            });
+
+            // Refresh overtime data button
+            document.getElementById('refreshOvertimeData').addEventListener('click', refreshOvertimeData);
+
+            // Handle window resize
+            window.addEventListener('resize', handleResize);
+            window.addEventListener('orientationchange', handleResize);
+
+            // Initial setup
+            handleResize();
+            checkConnection();
+
+            console.log('Attendance System initialized successfully');
+        });
+
     </script>
 </body>
 </html>
+
