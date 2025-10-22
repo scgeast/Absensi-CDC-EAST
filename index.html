@@ -3039,6 +3039,216 @@
         }
 
         // =============================================
+        // PERBAIKAN: FUNGSI FOLDER MENU YANG DIPERBAIKI
+        // =============================================
+
+        // PERBAIKAN: Setup menu berdasarkan role dengan folder yang benar
+        function setupMenuByRole(role) {
+            console.log('Setting up menu for role:', role);
+            
+            // Sembunyikan semua folder dulu
+            document.getElementById('generalFolder').style.display = 'none';
+            document.getElementById('mainFolder').style.display = 'none';
+            
+            // Tampilkan menu General untuk semua role
+            document.getElementById('generalFolder').style.display = 'block';
+            
+            // Tampilkan menu Main dan Settings untuk admin
+            if (role === 'admin') {
+                document.getElementById('mainFolder').style.display = 'block';
+                
+                // Untuk admin: sembunyikan Overtime Form, tampilkan Overtime Detail
+                document.getElementById('overtimeFormMenuItem').style.display = 'none';
+                document.getElementById('overtimeDetailMenuItem').style.display = 'flex';
+            } else {
+                // Untuk user biasa: tampilkan Overtime Form, sembunyikan Overtime Detail
+                document.getElementById('overtimeFormMenuItem').style.display = 'flex';
+                document.getElementById('overtimeDetailMenuItem').style.display = 'none';
+            }
+            
+            // Tampilkan logout untuk semua role
+            document.getElementById('logoutBtn').style.display = 'flex';
+            
+            // PERBAIKAN: Setup folder toggle setelah menu diatur
+            setupFolderToggle();
+        }
+
+        // PERBAIKAN: Setup folder toggle yang benar
+        function setupFolderToggle() {
+            console.log('Setting up folder toggle...');
+            
+            // Setup folder header click events
+            const folderHeaders = document.querySelectorAll('.sidebar-folder-header');
+            folderHeaders.forEach(header => {
+                // Remove existing event listeners
+                header.removeEventListener('click', handleFolderClick);
+                // Add new event listener
+                header.addEventListener('click', handleFolderClick);
+            });
+            
+            // Setup menu item click events
+            const menuItems = document.querySelectorAll('.sidebar-menu a[data-tab]');
+            menuItems.forEach(item => {
+                // Remove existing event listeners
+                item.removeEventListener('click', handleMenuItemClick);
+                // Add new event listener
+                item.addEventListener('click', handleMenuItemClick);
+            });
+            
+            console.log('Folder toggle setup completed');
+        }
+
+        // PERBAIKAN: Fungsi untuk menangani klik pada folder header
+        function handleFolderClick(e) {
+            const folder = this.parentElement;
+            folder.classList.toggle('expanded');
+            
+            // Simpan state folder ke localStorage
+            const folderId = folder.id;
+            const isExpanded = folder.classList.contains('expanded');
+            localStorage.setItem(`folder_${folderId}`, isExpanded);
+        }
+
+        // PERBAIKAN: Fungsi untuk menangani klik pada menu item
+        function handleMenuItemClick(e) {
+            e.preventDefault();
+            
+            // Update active menu
+            document.querySelectorAll('.sidebar-menu a').forEach(i => i.classList.remove('active'));
+            this.classList.add('active');
+            
+            // Show corresponding tab
+            const tabName = this.getAttribute('data-tab');
+            currentTab = tabName;
+            
+            document.querySelectorAll('.tab-pane').forEach(tab => {
+                tab.classList.remove('show', 'active');
+            });
+            
+            const targetTab = document.getElementById(tabName);
+            if (targetTab) {
+                targetTab.classList.add('show', 'active');
+            }
+            
+            // PERBAIKAN: Tampilkan/sembunyikan filter yang sesuai
+            if (tabName === 'entry' || tabName === 'cuti' || tabName === 'summary-overtime') {
+                // Main folder tabs
+                document.getElementById('filterSectionMain').style.display = 'block';
+                document.getElementById('filterSectionOvertimeOutput').style.display = 'none';
+                document.getElementById('filterSectionAbsenTabel').style.display = 'none';
+            } else if (tabName === 'output' || tabName === 'overtime' || tabName === 'form-rekap-lembur' || tabName === 'overtime-detail-admin') {
+                // Overtime & Output tabs
+                document.getElementById('filterSectionMain').style.display = 'none';
+                document.getElementById('filterSectionOvertimeOutput').style.display = 'block';
+                document.getElementById('filterSectionAbsenTabel').style.display = 'none';
+            } else if (tabName === 'absen-tabel' || tabName === 'cuti-detail') {
+                // Attendance Table tabs
+                document.getElementById('filterSectionMain').style.display = 'none';
+                document.getElementById('filterSectionOvertimeOutput').style.display = 'none';
+                document.getElementById('filterSectionAbsenTabel').style.display = 'block';
+            } else if (tabName === 'setting') {
+                document.getElementById('filterSectionMain').style.display = 'none';
+                document.getElementById('filterSectionOvertimeOutput').style.display = 'none';
+                document.getElementById('filterSectionAbsenTabel').style.display = 'none';
+            }
+            
+            // Load data berdasarkan tab yang aktif
+            if (tabName === 'absen-tabel') {
+                updateAbsenTabelTable();
+                updateAttendanceSummaryTable();
+            }
+            
+            // Load overtime summary when switching to that tab
+            if (tabName === 'summary-overtime') {
+                updateOvertimeSummaryTable();
+            }
+            
+            // Load output data when switching to output tab
+            if (tabName === 'output') {
+                if (!outputDataLoaded) {
+                    generateOutputAndOvertimeData();
+                    outputDataLoaded = true;
+                }
+                updateOutputTable();
+            }
+            
+            // Load overtime data when switching to overtime tab
+            if (tabName === 'overtime') {
+                if (!overtimeDataLoaded) {
+                    generateOutputAndOvertimeData();
+                    overtimeDataLoaded = true;
+                }
+                updateOvertimeTable();
+            }
+            
+            // Load cuti detail data when switching to cuti-detail tab
+            if (tabName === 'cuti-detail') {
+                generateCutiDetailData();
+            }
+            
+            // Load cuti data when switching to cuti tab
+            if (tabName === 'cuti') {
+                updateCutiTable();
+            }
+            
+            // Initialize overtime form when switching to that tab
+            if (tabName === 'form-rekap-lembur') {
+                initOvertimeForm();
+            }
+            
+            // Initialize overtime detail admin when switching to that tab
+            if (tabName === 'overtime-detail-admin') {
+                initOvertimeDetailAdmin();
+            }
+        }
+
+        // PERBAIKAN: Load folder state dari localStorage
+        function loadFolderState() {
+            const generalFolder = document.getElementById('generalFolder');
+            const mainFolder = document.getElementById('mainFolder');
+            
+            // Load state untuk General folder
+            const generalState = localStorage.getItem('folder_generalFolder');
+            if (generalState === 'true') {
+                generalFolder.classList.add('expanded');
+            }
+            
+            // Load state untuk Main folder (hanya untuk admin)
+            if (currentUser && currentUser.role === 'admin') {
+                const mainState = localStorage.getItem('folder_mainFolder');
+                if (mainState === 'true') {
+                    mainFolder.classList.add('expanded');
+                }
+            }
+        }
+
+        // =============================================
+        // PERBAIKAN: FUNGSI SIDEBAR YANG DIPERBAIKI
+        // =============================================
+
+        // PERBAIKAN: Initialize sidebar dengan benar untuk semua role
+        function initSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const sidebarToggle = document.getElementById('sidebarToggle');
+            
+            // Pastikan event listener terpasang dengan benar
+            if (sidebarToggle) {
+                sidebarToggle.addEventListener('click', function() {
+                    sidebar.classList.toggle('expanded');
+                    document.getElementById('mainContent').classList.toggle('expanded');
+                    document.body.classList.toggle('header-expanded');
+                    document.getElementById('userPasswordSection').classList.toggle('expanded');
+                });
+            }
+            
+            // Setup folder dan menu
+            setupFolderToggle();
+            
+            // Load folder state
+            loadFolderState();
+        }
+
+        // =============================================
         // FUNGSI-FUNGSI LAIN YANG SUDAH ADA (TETAP SAMA)
         // =============================================
 
@@ -4220,44 +4430,6 @@
             // Auto-save hanya dilakukan saat tombol save diklik
         }
 
-        // Setup menu berdasarkan role
-        function setupMenuByRole(role) {
-            // Sembunyikan semua menu dulu
-            document.querySelectorAll('.sidebar-menu a').forEach(menu => {
-                menu.style.display = 'none';
-            });
-            
-            document.querySelectorAll('.sidebar-folder').forEach(folder => {
-                folder.style.display = 'none';
-            });
-            
-            // Tampilkan menu General untuk semua role
-            document.getElementById('generalFolder').style.display = 'block';
-            document.querySelectorAll('#generalFolder .sidebar-menu a').forEach(menu => {
-                menu.style.display = 'flex';
-            });
-            
-            // Tampilkan menu Main dan Settings untuk admin
-            if (role === 'admin') {
-                document.getElementById('mainFolder').style.display = 'block';
-                document.querySelectorAll('#mainFolder .sidebar-menu a').forEach(menu => {
-                    menu.style.display = 'flex';
-                });
-                document.querySelector('[data-tab="setting"]').style.display = 'flex';
-                
-                // Untuk admin: sembunyikan Overtime Form, tampilkan Overtime Detail
-                document.getElementById('overtimeFormMenuItem').style.display = 'none';
-                document.getElementById('overtimeDetailMenuItem').style.display = 'flex';
-            } else {
-                // Untuk user biasa: tampilkan Overtime Form, sembunyikan Overtime Detail
-                document.getElementById('overtimeFormMenuItem').style.display = 'flex';
-                document.getElementById('overtimeDetailMenuItem').style.display = 'none';
-            }
-            
-            // Tampilkan logout untuk semua role
-            document.getElementById('logoutBtn').style.display = 'flex';
-        }
-
         // Setup filter berdasarkan role
         function setupFilterByRole(role) {
             const employeeFilterContainerMain = document.getElementById('employeeFilterContainerMain');
@@ -4548,124 +4720,6 @@
                 document.getElementById('loginError').style.display = 'none';
             }).catch((error) => {
                 console.error('Logout error:', error);
-            });
-        }
-
-        // PERBAIKAN: Initialize sidebar dengan benar untuk semua role
-        function initSidebar() {
-            const sidebar = document.getElementById('sidebar');
-            const sidebarToggle = document.getElementById('sidebarToggle');
-            
-            // Pastikan event listener terpasang dengan benar
-            if (sidebarToggle) {
-                sidebarToggle.addEventListener('click', function() {
-                    sidebar.classList.toggle('expanded');
-                    document.getElementById('mainContent').classList.toggle('expanded');
-                    document.body.classList.toggle('header-expanded');
-                    document.getElementById('userPasswordSection').classList.toggle('expanded');
-                });
-            }
-            
-            // Folder toggle
-            document.querySelectorAll('.sidebar-folder-header').forEach(header => {
-                header.addEventListener('click', function() {
-                    this.parentElement.classList.toggle('expanded');
-                });
-            });
-            
-            // Menu item clicks
-            document.querySelectorAll('.sidebar-menu a[data-tab]').forEach(item => {
-                item.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    
-                    // Update active menu
-                    document.querySelectorAll('.sidebar-menu a').forEach(i => i.classList.remove('active'));
-                    this.classList.add('active');
-                    
-                    // Show corresponding tab
-                    const tabName = this.getAttribute('data-tab');
-                    currentTab = tabName;
-                    
-                    document.querySelectorAll('.tab-pane').forEach(tab => {
-                        tab.classList.remove('show', 'active');
-                    });
-                    
-                    const targetTab = document.getElementById(tabName);
-                    if (targetTab) {
-                        targetTab.classList.add('show', 'active');
-                    }
-                    
-                    // PERBAIKAN: Tampilkan/sembunyikan filter yang sesuai
-                    if (tabName === 'entry' || tabName === 'cuti' || tabName === 'summary-overtime') {
-                        // Main folder tabs
-                        document.getElementById('filterSectionMain').style.display = 'block';
-                        document.getElementById('filterSectionOvertimeOutput').style.display = 'none';
-                        document.getElementById('filterSectionAbsenTabel').style.display = 'none';
-                    } else if (tabName === 'output' || tabName === 'overtime' || tabName === 'form-rekap-lembur' || tabName === 'overtime-detail-admin') {
-                        // Overtime & Output tabs
-                        document.getElementById('filterSectionMain').style.display = 'none';
-                        document.getElementById('filterSectionOvertimeOutput').style.display = 'block';
-                        document.getElementById('filterSectionAbsenTabel').style.display = 'none';
-                    } else if (tabName === 'absen-tabel' || tabName === 'cuti-detail') {
-                        // Attendance Table tabs
-                        document.getElementById('filterSectionMain').style.display = 'none';
-                        document.getElementById('filterSectionOvertimeOutput').style.display = 'none';
-                        document.getElementById('filterSectionAbsenTabel').style.display = 'block';
-                    } else if (tabName === 'setting') {
-                        document.getElementById('filterSectionMain').style.display = 'none';
-                        document.getElementById('filterSectionOvertimeOutput').style.display = 'none';
-                        document.getElementById('filterSectionAbsenTabel').style.display = 'none';
-                    }
-                    
-                    // Load data berdasarkan tab yang aktif
-                    if (tabName === 'absen-tabel') {
-                        updateAbsenTabelTable();
-                        updateAttendanceSummaryTable();
-                    }
-                    
-                    // Load overtime summary when switching to that tab
-                    if (tabName === 'summary-overtime') {
-                        updateOvertimeSummaryTable();
-                    }
-                    
-                    // Load output data when switching to output tab
-                    if (tabName === 'output') {
-                        if (!outputDataLoaded) {
-                            generateOutputAndOvertimeData();
-                            outputDataLoaded = true;
-                        }
-                        updateOutputTable();
-                    }
-                    
-                    // Load overtime data when switching to overtime tab
-                    if (tabName === 'overtime') {
-                        if (!overtimeDataLoaded) {
-                            generateOutputAndOvertimeData();
-                            overtimeDataLoaded = true;
-                        }
-                        updateOvertimeTable();
-                    }
-                    
-                    // Load cuti detail data when switching to cuti-detail tab
-                    if (tabName === 'cuti-detail') {
-                        generateCutiDetailData();
-                    }
-                    
-                    // Load cuti data when switching to cuti tab
-                    if (tabName === 'cuti') {
-                        updateCutiTable();
-                    }
-                    
-                    // Initialize overtime form when switching to that tab
-                    if (tabName === 'form-rekap-lembur') {
-                        initOvertimeForm();
-                    }
-                    
-                    // Initialize overtime detail admin when switching to that tab
-                    if (tabName === 'overtime-detail-admin') {
-                        initOvertimeDetailAdmin();
-                    }
-                });
             });
         }
 
