@@ -1558,6 +1558,31 @@
         .btn-delete-overtime:hover {
             background-color: #c82333;
         }
+        /* PERBAIKAN: Toggle password visibility */
+        .password-input-container {
+            position: relative;
+        }
+
+        .toggle-password {
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            color: #6c757d;
+            cursor: pointer;
+            padding: 5px;
+        }
+        
+        .toggle-password:hover {
+            color: #495057;
+        }
+        
+        .toggle-password:focus {
+            outline: none;
+        }
+        
     </style>
 </head>
 <body>
@@ -1578,26 +1603,31 @@
         <div class="spinner"></div>
     </div>
 
-    <!-- Login Screen -->
-    <div class="login-container" id="loginContainer">
-        <div class="login-form">
-            <h2 class="login-title">ATTENDANCE CREW CDC EAST</h2>
-            <div class="offline-message" id="loginOfflineMessage">
-                <i class="fas fa-wifi"></i> You are currently offline. Some features may be limited.
+       <!-- Login Screen -->
+        <div class="login-container" id="loginContainer">
+            <div class="login-form">
+                <h2 class="login-title">ATTENDANCE CREW CDC EAST</h2>
+                <div class="offline-message" id="loginOfflineMessage">
+                    <i class="fas fa-wifi"></i> You are currently offline. Some features may be limited.
+                </div>
+                <div class="mb-3">
+                    <label for="email" class="form-label">Email</label>
+                    <input type="email" class="form-control" id="email" placeholder="Enter email">
+                </div>
+                <div class="mb-3">
+                    <label for="password" class="form-label">Password</label>
+                    <div class="password-input-container">
+                        <input type="password" class="form-control" id="password" placeholder="Enter password">
+                        <button type="button" class="toggle-password" id="togglePassword">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="login-error" id="loginError">Email or password is incorrect!</div>
+                <button class="btn btn-futuristic w-100" id="loginBtn">Login</button>
+                <div class="provider-text">Provide by L23-51Xe</div>
             </div>
-            <div class="mb-3">
-                <label for="email" class="form-label">Email</label>
-                <input type="email" class="form-control" id="email" placeholder="Enter email">
-            </div>
-            <div class="mb-3">
-                <label for="password" class="form-label">Password</label>
-                <input type="password" class="form-control" id="password" placeholder="Enter password">
-            </div>
-            <div class="login-error" id="loginError">Email or password is incorrect!</div>
-            <button class="btn btn-futuristic w-100" id="loginBtn">Login</button>
-            <div class="provider-text">Provide by L23-51Xe</div>
         </div>
-    </div>
 
     <!-- Sidebar -->
     <div class="sidebar" id="sidebar">
@@ -2468,15 +2498,30 @@
                 <div class="modal-body">
                     <div class="mb-3">
                         <label for="userCurrentPassword" class="form-label">Current Password</label>
-                        <input type="password" class="form-control form-control-sm" id="userCurrentPassword">
+                        <div class="password-input-container">
+                            <input type="password" class="form-control form-control-sm" id="userCurrentPassword">
+                            <button type="button" class="toggle-password toggle-current-password">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                        </div>
                     </div>
                     <div class="mb-3">
                         <label for="userNewPassword" class="form-label">New Password</label>
-                        <input type="password" class="form-control form-control-sm" id="userNewPassword">
+                        <div class="password-input-container">
+                            <input type="password" class="form-control form-control-sm" id="userNewPassword">
+                            <button type="button" class="toggle-password toggle-new-password">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                        </div>
                     </div>
                     <div class="mb-3">
                         <label for="userConfirmPassword" class="form-label">Confirm New Password</label>
-                        <input type="password" class="form-control form-control-sm" id="userConfirmPassword">
+                        <div class="password-input-container">
+                            <input type="password" class="form-control form-control-sm" id="userConfirmPassword">
+                            <button type="button" class="toggle-password toggle-confirm-password">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                        </div>
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -2486,7 +2531,6 @@
             </div>
         </div>
     </div>
-
     <!-- Modal untuk View Leave Details - PERBAIKAN: Tambah tombol delete -->
     <div class="modal fade leave-detail-modal" id="viewLeaveDetailModal" tabindex="-1" aria-labelledby="viewLeaveDetailModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-lg">
@@ -2676,102 +2720,134 @@
         // PERBAIKAN SISTEM CHANGE PASSWORD YANG LEBIH BAIK
         // =============================================
 
-        // PERBAIKAN: Fungsi untuk change password user biasa - DIPERBAIKI
-        async function changeUserPassword() {
-            const currentPassword = document.getElementById('userCurrentPassword').value;
-            const newPassword = document.getElementById('userNewPassword').value;
-            const confirmPassword = document.getElementById('userConfirmPassword').value;
-            
-            if (!currentPassword || !newPassword || !confirmPassword) {
-                showNotification('Please fill all password fields', 'error');
-                return;
-            }
-            
-            if (newPassword !== confirmPassword) {
-                showNotification('New password and confirm password do not match', 'error');
-                return;
-            }
-            
-            if (newPassword.length < 6) {
-                showNotification('New password must be at least 6 characters', 'error');
-                return;
-            }
-            
-            try {
-                showLoading(true);
-                
-                // Re-authenticate user dengan current password
-                const user = auth.currentUser;
-                const email = user.email;
-                
-                // Sign in ulang dengan password lama untuk verifikasi
-                await auth.signInWithEmailAndPassword(email, currentPassword);
-                
-                // Update password di Firebase Authentication
-                await user.updatePassword(newPassword);
-                
-                // PERBAIKAN: Update password di Firestore juga
-                await db.collection('users').doc(user.uid).update({
-                    password: newPassword,
-                    passwordUpdatedAt: firebase.firestore.FieldValue.serverTimestamp()
-                });
-                
-                showNotification('Password changed successfully and updated in user management', 'success');
-                
-                // Close modal
-                const modal = bootstrap.Modal.getInstance(document.getElementById('changePasswordModal'));
-                modal.hide();
-                
-                // Reset form
-                document.getElementById('userCurrentPassword').value = '';
-                document.getElementById('userNewPassword').value = '';
-                document.getElementById('userConfirmPassword').value = '';
-                
-                // PERBAIKAN: Reload user data untuk update tampilan
-                await loadUsers();
-                
-            } catch (error) {
-                console.error('Error changing password:', error);
-                if (error.code === 'auth/wrong-password') {
-                    showNotification('Current password is incorrect', 'error');
-                } else if (error.code === 'auth/requires-recent-login') {
-                    showNotification('Please log in again to change your password', 'error');
-                } else {
-                    showNotification('Error changing password: ' + error.message, 'error');
-                }
-            } finally {
-                showLoading(false);
-            }
+       // PERBAIKAN: Fungsi untuk change password user dengan update ke user management
+async function changeUserPassword() {
+    const currentPassword = document.getElementById('userCurrentPassword').value;
+    const newPassword = document.getElementById('userNewPassword').value;
+    const confirmPassword = document.getElementById('userConfirmPassword').value;
+    
+    if (!currentPassword || !newPassword || !confirmPassword) {
+        showNotification('Please fill all password fields', 'error');
+        return;
+    }
+    
+    if (newPassword !== confirmPassword) {
+        showNotification('New password and confirm password do not match', 'error');
+        return;
+    }
+    
+    if (newPassword.length < 6) {
+        showNotification('New password must be at least 6 characters', 'error');
+        return;
+    }
+    
+    try {
+        showLoading(true);
+        
+        // Re-authenticate user
+        const user = auth.currentUser;
+        const email = user.email;
+        
+        // Re-authenticate user dengan credential
+        const credential = firebase.auth.EmailAuthProvider.credential(
+            email, 
+            currentPassword
+        );
+        
+        await user.reauthenticateWithCredential(credential);
+        
+        // Update password di Firebase Authentication
+        await user.updatePassword(newPassword);
+        
+        // PERBAIKAN: Update password di Firestore user management
+        await db.collection('users').doc(user.uid).update({
+            password: newPassword,
+            passwordUpdatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        
+        showNotification('Password changed successfully and updated in user management', 'success');
+        
+        // Close modal
+        const modal = bootstrap.Modal.getInstance(document.getElementById('changePasswordModal'));
+        modal.hide();
+        
+        // Reset form
+        document.getElementById('userCurrentPassword').value = '';
+        document.getElementById('userNewPassword').value = '';
+        document.getElementById('userConfirmPassword').value = '';
+        
+        // PERBAIKAN: Reload user data untuk update tampilan
+        await loadUsers();
+        
+    } catch (error) {
+        console.error('Error changing password:', error);
+        if (error.code === 'auth/wrong-password') {
+            showNotification('Current password is incorrect', 'error');
+        } else if (error.code === 'auth/requires-recent-login') {
+            showNotification('Please log in again to change your password', 'error');
+        } else {
+            showNotification('Error changing password: ' + error.message, 'error');
         }
+    } finally {
+        showLoading(false);
+    }
+}
 
-        // PERBAIKAN: Fungsi untuk change password di user management (admin)
-        async function changeUserPasswordInManagement(userId, newPassword) {
-            try {
-                showLoading(true);
-                
-                if (newPassword.length < 6) {
-                    showNotification('Password must be at least 6 characters', 'error');
-                    return;
-                }
-                
-                // Update password di Firestore
-                await db.collection('users').doc(userId).update({
-                    password: newPassword,
-                    passwordUpdatedAt: firebase.firestore.FieldValue.serverTimestamp()
-                });
-                
-                showNotification('Password updated successfully in user management', 'success');
-                
-                // Reload user data untuk update tampilan
-                await loadUsers();
-                
-            } catch (error) {
-                console.error('Error changing password in management:', error);
-                showNotification('Error changing password: ' + error.message, 'error');
-            } finally {
-                showLoading(false);
-            }
-        }
+// PERBAIKAN: Fungsi untuk load users dengan menampilkan password
+async function loadUsers() {
+    try {
+        const querySnapshot = await db.collection('users').get();
+        
+        users = [];
+        querySnapshot.forEach(doc => {
+            users.push({
+                id: doc.id,
+                ...doc.data()
+            });
+        });
+        
+        updateUserTable();
+        
+    } catch (error) {
+        console.error('Error loading users:', error);
+    }
+}
+
+// PERBAIKAN: Update user table untuk menampilkan password
+function updateUserTable() {
+    const tbody = document.getElementById('userTableBody');
+    tbody.innerHTML = '';
+    
+    if (users.length === 0) {
+        const row = document.createElement('tr');
+        row.innerHTML = `<td colspan="7" class="text-center">No users found</td>`;
+        tbody.appendChild(row);
+        return;
+    }
+    
+    users.forEach((user, index) => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td>${index + 1}</td>
+            <td>${user.email}</td>
+            <td>${user.name || '-'}</td>
+            <td>${user.position || '-'}</td>
+            <td>${user.role}</td>
+            <td>${user.password ? '••••••••' : 'Not set'}</td>
+            <td>
+                <button class="btn-edit" onclick="editUser('${user.id}')">
+                    <i class="fas fa-edit"></i> Edit
+                </button>
+                ${user.id !== currentUser.uid ? `
+                    <button class="btn-delete" onclick="deleteUser('${user.id}')">
+                        <i class="fas fa-trash"></i> Delete
+                    </button>
+                ` : ''}
+            </td>
+        `;
+        tbody.appendChild(row);
+    });
+}
 
         // PERBAIKAN: Fungsi untuk reset password user (admin)
         async function resetUserPassword(userId) {
@@ -2898,7 +2974,7 @@
                     name: name,
                     position: position,
                     role: role,
-                    password: password,
+                    password: password, // Simpan password di Firestore
                     createdAt: firebase.firestore.FieldValue.serverTimestamp()
                 });
                 
@@ -3477,7 +3553,7 @@
 
         // Event listener untuk change password button
         document.getElementById('userChangePasswordBtn').addEventListener('click', changeUserPassword);
-
+        
         // Event listener untuk save user button
         document.getElementById('saveUserBtn').addEventListener('click', createNewUser);
 
@@ -3514,8 +3590,55 @@
                 loginOfflineMessage.style.display = 'block';
                 if (currentUser) {
                     appOfflineMessage.style.display = 'block';
-                }
+
+        // PERBAIKAN: Fungsi untuk toggle password visibility
+        function setupPasswordToggle() {
+            // Toggle untuk login password
+            const togglePassword = document.getElementById('togglePassword');
+            const passwordInput = document.getElementById('password');
+            
+            if (togglePassword && passwordInput) {
+                togglePassword.addEventListener('click', function() {
+                    const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+                    passwordInput.setAttribute('type', type);
+                    this.innerHTML = type === 'password' ? '<i class="fas fa-eye"></i>' : '<i class="fas fa-eye-slash"></i>';
+                });
             }
+            
+            // Toggle untuk change password modal
+            const toggleCurrent = document.querySelector('.toggle-current-password');
+            const currentPasswordInput = document.getElementById('userCurrentPassword');
+            
+            if (toggleCurrent && currentPasswordInput) {
+                toggleCurrent.addEventListener('click', function() {
+                    const type = currentPasswordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+                    currentPasswordInput.setAttribute('type', type);
+                    this.innerHTML = type === 'password' ? '<i class="fas fa-eye"></i>' : '<i class="fas fa-eye-slash"></i>';
+                });
+            }
+            
+            const toggleNew = document.querySelector('.toggle-new-password');
+            const newPasswordInput = document.getElementById('userNewPassword');
+            
+            if (toggleNew && newPasswordInput) {
+                toggleNew.addEventListener('click', function() {
+                    const type = newPasswordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+                    newPasswordInput.setAttribute('type', type);
+                    this.innerHTML = type === 'password' ? '<i class="fas fa-eye"></i>' : '<i class="fas fa-eye-slash"></i>';
+                });
+            }
+            
+            const toggleConfirm = document.querySelector('.toggle-confirm-password');
+            const confirmPasswordInput = document.getElementById('userConfirmPassword');
+            
+            if (toggleConfirm && confirmPasswordInput) {
+                toggleConfirm.addEventListener('click', function() {
+                    const type = confirmPasswordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+                    confirmPasswordInput.setAttribute('type', type);
+                    this.innerHTML = type === 'password' ? '<i class="fas fa-eye"></i>' : '<i class="fas fa-eye-slash"></i>';
+                });
+            }
+        }
             statusElement.style.display = 'block';
         }
 
